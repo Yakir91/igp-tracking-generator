@@ -75,7 +75,8 @@ td.n{font-family:var(--f-mono);font-size:14px;white-space:nowrap}
 .tools{display:flex;flex-direction:column;gap:12px}
 .load{display:flex;gap:8px;flex-wrap:wrap}
 .load input{font:15px var(--f-mono);padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);flex:1 1 160px;min-width:0;direction:ltr;text-align:left}
-.msg{color:var(--flag);font-size:14px;min-height:1.2em}
+.notice{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;border:1px solid color-mix(in srgb,var(--flag) 45%,var(--line));background:color-mix(in srgb,var(--flag) 10%,var(--paper));color:var(--ink);font-weight:600}
+.notice::before{content:"!";flex:none;width:22px;height:22px;border-radius:50%;background:var(--flag);color:var(--paper);display:grid;place-items:center;font-weight:700;font-size:14px}
 .recent{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font:13px var(--f-mono);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
 details{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
@@ -125,6 +126,8 @@ summary{cursor:pointer;font-weight:600}
     <button class="btn" id="gen">מסלול חדש</button>
   </div>
 
+  <div class="notice" id="msg" role="status" hidden></div>
+
   <div class="main">
     <section class="panel map" aria-label="מפת המסלול">
       <div class="maphead">
@@ -150,7 +153,6 @@ summary{cursor:pointer;font-weight:600}
           <button class="btn ghost" id="loadbtn">טען</button>
           <button class="btn ghost" id="copybtn">העתק קוד</button>
         </div>
-        <div class="msg" id="msg" role="status"></div>
         <div class="recent" id="recent"></div>
       </section>
     </div>
@@ -215,16 +217,18 @@ function tryTrack(rng,cfg,S){
 // Objects are added one at a time, each at a random valid spot. Object k always
 // uses the same random draw for a given track, so adding one keeps the others in place.
 function placeObjects(t,count,S){
+  // build the full random sequence once; its length is the most this track can hold
   const picked=[];
-  for(let k=0;k<count-1;k++){
+  for(let k=0;k<OBJ_MAX-1;k++){
     const ok=t.cand.filter(c=>picked.every(p=>Math.abs(p.cum-c.cum)>=S.gap));
     if(!ok.length)break;
     const r=mulberry32((t.seed*2654435761+(k+1)*40503)>>>0);r();
     picked.push(ok[Math.floor(r()*ok.length)]);
   }
   const n=t.lens.length;
-  t.objs=picked.sort((a,b)=>a.cum-b.cum).concat([{leg:n-1,off:t.lens[n-1],cum:t.steps}]);
-  t.count=count;t.short=count-t.objs.length;
+  t.maxFit=picked.length+1;
+  t.requested=count;t.count=Math.min(count,t.maxFit);
+  t.objs=picked.slice(0,t.count-1).sort((a,b)=>a.cum-b.cum).concat([{leg:n-1,off:t.lens[n-1],cum:t.steps}]);
 }
 
 function generate(lv,seed,count){
@@ -303,7 +307,8 @@ function recents(){try{return JSON.parse(load('trk-recent')||'[]')}catch(e){retu
 function pushRecent(c){const r=recents().filter(x=>x!==c);r.unshift(c);store('trk-recent',JSON.stringify(r.slice(0,6)));renderRecent()}
 function renderRecent(){const box=$('recent');box.innerHTML='';recents().forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c;b.dir='ltr';b.onclick=()=>show(c);box.appendChild(b)})}
 
-function setCount(c){objCount=Math.min(OBJ_MAX,Math.max(OBJ_MIN,c));$('objcount').textContent=objCount;$('objminus').disabled=objCount<=OBJ_MIN;$('objplus').disabled=objCount>=OBJ_MAX}
+function setCount(c){objCount=Math.min(OBJ_MAX,Math.max(OBJ_MIN,c));$('objcount').textContent=objCount;$('objminus').disabled=objCount<=OBJ_MIN;$('objplus').disabled=objCount>=(current?current.maxFit:OBJ_MAX)}
+function note(text){$('msg').textContent=text||'';$('msg').hidden=!text}
 function setLevel(lv){level=lv;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lv===lv)))}
 
 function render(t){
@@ -317,12 +322,14 @@ function render(t){
 
 function show(code){
   const m=/^\s*(IGP\s*[123]|FH\s*1)\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
-  if(!m){$('msg').textContent='הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5';return}
+  if(!m){note('הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5');return}
   const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:3);
   const t=generate(lv,seed,objCount);
-  if(!t){$('msg').textContent='לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.';return}
-  render(t);
-  $('msg').textContent=t.short>0?`אין מקום ל-${t.count} חפצים במסלול הזה; הונחו ${t.objs.length}.`:'';
+  if(!t){note('לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.');return}
+  render(t);setCount(t.count);
+  if(t.requested>t.count)note(`במסלול הזה יש מקום ל-${t.maxFit} חפצים לכל היותר, לכן הונחו ${t.count}.`);
+  else if(t.count>=t.maxFit&&t.maxFit<OBJ_MAX)note(`הגעת למקסימום: במסלול הזה יש מקום ל-${t.maxFit} חפצים.`);
+  else note('');
 }
 function fresh(){show(`${level}-${10000+Math.floor(Math.random()*90000)}-${objCount}`)}
 function changeCount(d){setCount(objCount+d);if(current)show(`${current.level}-${current.seed}-${objCount}`)}
@@ -335,8 +342,8 @@ $('loadbtn').addEventListener('click',()=>show($('codein').value));
 $('codein').addEventListener('keydown',e=>{if(e.key==='Enter')show($('codein').value)});
 $('copybtn').addEventListener('click',()=>{
   if(!current)return;const c=codeOf(current);
-  const done=()=>{$('msg').textContent='הקוד הועתק'};
-  const fallback=()=>{$('codein').value=c;$('codein').select();$('msg').textContent='הקוד מסומן בתיבה, אפשר להעתיק'};
+  const done=()=>{note('הקוד הועתק')};
+  const fallback=()=>{$('codein').value=c;$('codein').select();note('הקוד מסומן בתיבה, אפשר להעתיק')};
   try{navigator.clipboard.writeText(c).then(done,fallback)}catch(e){fallback()}
 });
 ['sBefore','sAfter','sStart','sGap','sLeg','sSep'].forEach(id=>$(id).addEventListener('change',()=>current&&show(codeOf(current))));
