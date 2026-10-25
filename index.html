@@ -43,6 +43,11 @@ header p{margin:4px 0 0;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .btn{font:700 16px var(--f-body);border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink)}
 .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);font-weight:600}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--paper);overflow:hidden}
+.stepper .stlbl{padding:0 12px;font-weight:600;color:var(--muted)}
+.stepper button{font:700 20px var(--f-body);width:42px;height:44px;border:0;border-inline-start:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.stepper button:disabled{opacity:.35;cursor:default}
+.stepper output{font:600 17px var(--f-mono);min-width:38px;text-align:center;border-inline-start:1px solid var(--line);line-height:44px}
 button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--flag);outline-offset:2px}
 
 .main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
@@ -111,6 +116,12 @@ summary{cursor:pointer;font-weight:600}
       <button id="lv3" data-lv="IGP3" aria-pressed="false">IGP 3</button>
       <button id="lvfh1" data-lv="FH1" aria-pressed="false">FH1</button>
     </div>
+    <div class="stepper" role="group" aria-label="מספר חפצים">
+      <span class="stlbl">חפצים</span>
+      <button id="objminus" aria-label="הסר חפץ">−</button>
+      <output id="objcount" aria-live="polite">3</output>
+      <button id="objplus" aria-label="הוסף חפץ">+</button>
+    </div>
     <button class="btn" id="gen">מסלול חדש</button>
   </div>
 
@@ -151,7 +162,7 @@ summary{cursor:pointer;font-weight:600}
       <label for="sBefore">מינימום צעדים בין חפץ לפנייה שאחריו<input id="sBefore" type="number" min="0" step="5" value="30"></label>
       <label for="sAfter">מינימום צעדים אחרי פנייה עד חפץ<input id="sAfter" type="number" min="0" step="5" value="30"></label>
       <label for="sStart">מינימום צעדים מהדגל עד חפץ ראשון<input id="sStart" type="number" min="0" step="5" value="50"></label>
-      <label for="sGap">מינימום צעדים בין חפצים<input id="sGap" type="number" min="10" step="5" value="40"></label>
+      <label for="sGap">מינימום צעדים בין חפצים<input id="sGap" type="number" min="10" step="5" value="20"></label>
       <label for="sLeg">אורך צלע מינימלי<input id="sLeg" type="number" min="40" step="10" value="50"></label>
       <label for="sSep">מרחק מינימלי בין צלעות לא סמוכות<input id="sSep" type="number" min="10" step="5" value="40"></label>
     </div>
@@ -164,11 +175,12 @@ summary{cursor:pointer;font-weight:600}
 const LEVELS={IGP1:{name:'IGP 1',steps:300,legs:3},IGP2:{name:'IGP 2',steps:400,legs:3},IGP3:{name:'IGP 3',steps:600,legs:5},FH1:{name:'FH1',steps:800,legs:5}};
 const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
 const $=id=>document.getElementById(id);
-let level='IGP2', current=null;
+let level='IGP2', current=null, objCount=3;
+const OBJ_MIN=1, OBJ_MAX=12;
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const num=(id,d)=>{const v=parseInt($(id).value,10);return isFinite(v)&&v>=0?v:d};
-function settings(){return{before:num('sBefore',30),after:num('sAfter',30),start:num('sStart',50),gap:Math.max(10,num('sGap',40)),minLeg:Math.max(40,num('sLeg',50)),sep:num('sSep',40)}}
+function settings(){return{before:num('sBefore',30),after:num('sAfter',30),start:num('sStart',50),gap:Math.max(10,num('sGap',20)),minLeg:Math.max(40,num('sLeg',50)),sep:num('sSep',40)}}
 
 function segDist(a,b){ // axis-aligned segments
   const ax0=Math.min(a[0][0],a[1][0]),ax1=Math.max(a[0][0],a[1][0]),ay0=Math.min(a[0][1],a[1][1]),ay1=Math.max(a[0][1],a[1][1]);
@@ -197,21 +209,27 @@ function tryTrack(rng,cfg,S){
     for(let o=Math.ceil(lo/5)*5;o<=hi;o+=5){if(cum+o>=S.start&&o>0)cand.push({leg:i,off:o,cum:cum+o})}
     cum+=L;
   });
-  if(cand.length<2)return null;
-  for(let k=0;k<60;k++){
-    const a=cand[Math.floor(rng()*cand.length)],b=cand[Math.floor(rng()*cand.length)];
-    const [x,y]=a.cum<b.cum?[a,b]:[b,a];
-    if(y.cum-x.cum>=S.gap){
-      const objs=[x,y,{leg:n-1,off:lens[n-1],cum:cfg.steps}];
-      return{lens,pts,turns,heads,objs};
-    }
-  }
-  return null;
+  return{lens,pts,turns,heads,cand};
 }
 
-function generate(lv,seed){
+// Objects are added one at a time, each at a random valid spot. Object k always
+// uses the same random draw for a given track, so adding one keeps the others in place.
+function placeObjects(t,count,S){
+  const picked=[];
+  for(let k=0;k<count-1;k++){
+    const ok=t.cand.filter(c=>picked.every(p=>Math.abs(p.cum-c.cum)>=S.gap));
+    if(!ok.length)break;
+    const r=mulberry32((t.seed*2654435761+(k+1)*40503)>>>0);r();
+    picked.push(ok[Math.floor(r()*ok.length)]);
+  }
+  const n=t.lens.length;
+  t.objs=picked.sort((a,b)=>a.cum-b.cum).concat([{leg:n-1,off:t.lens[n-1],cum:t.steps}]);
+  t.count=count;t.short=count-t.objs.length;
+}
+
+function generate(lv,seed,count){
   const cfg=LEVELS[lv],S=settings(),rng=mulberry32(seed*2654435761>>>0);
-  for(let i=0;i<3000;i++){const t=tryTrack(rng,cfg,S);if(t){t.level=lv;t.seed=seed;t.steps=cfg.steps;return t}}
+  for(let i=0;i<3000;i++){const t=tryTrack(rng,cfg,S);if(t){t.level=lv;t.seed=seed;t.steps=cfg.steps;placeObjects(t,count,S);return t}}
   return null;
 }
 
@@ -255,7 +273,7 @@ function draw(t){
   // objects
   t.objs.forEach((o,i)=>{
     const [x,y]=along(t,o),r=s*1.05;
-    if(i===2)el('circle',{cx:x,cy:y,r:r*1.65,class:'objring','vector-effect':'non-scaling-stroke'},svg);
+    if(i===t.objs.length-1)el('circle',{cx:x,cy:y,r:r*1.65,class:'objring','vector-effect':'non-scaling-stroke'},svg);
     el('rect',{x:x-r,y:y-r,width:r*2,height:r*2,rx:r*0.2,transform:`rotate(45 ${x} ${y})`,class:'objd'},svg);
     el('text',{x,y:y+r*0.42,'text-anchor':'middle','font-size':r*1.2,class:'objt'},svg,i+1);
   });
@@ -272,19 +290,20 @@ function rowsFor(t){
   const ev=[{at:0,kind:'flag',title:'דגל התחלה',sub:'יציאה ישר קדימה'}];
   let cum=0;
   t.lens.forEach((L,i)=>{cum+=L;if(i<t.lens.length-1)ev.push({at:cum,kind:'turn',title:t.turns[i]===1?'פנייה ימינה':'פנייה שמאלה',sub:`סוף צלע ${i+1} (${L} צעדים)`})});
-  t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:`חפץ ${i+1}`,sub:i===2?'סוף המסלול':`צלע ${o.leg+1}, ${o.off} צעדים מתחילת הצלע`}));
+  t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:`חפץ ${i+1}`,sub:i===t.objs.length-1?'סוף המסלול':`צלע ${o.leg+1}, ${o.off} צעדים מתחילת הצלע`}));
   ev.sort((a,b)=>a.at-b.at||(a.kind==='obj'?1:-1));
   let prev=0;
   return ev.map(e=>{const d=e.at-prev;prev=e.at;return`<tr><td class="n">${e.at}</td><td><div class="ev"><span class="pip ${e.kind}"></span><div>${e.title}<small>${e.sub}</small></div></div></td><td class="n">${e.kind==='flag'?'–':'+'+d}</td></tr>`}).join('');
 }
 
-const codeOf=t=>`${t.level}-${t.seed}`;
+const codeOf=t=>`${t.level}-${t.seed}`+(t.count!==3?`-${t.count}`:'');
 function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function recents(){try{return JSON.parse(load('trk-recent')||'[]')}catch(e){return[]}}
 function pushRecent(c){const r=recents().filter(x=>x!==c);r.unshift(c);store('trk-recent',JSON.stringify(r.slice(0,6)));renderRecent()}
 function renderRecent(){const box=$('recent');box.innerHTML='';recents().forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c;b.dir='ltr';b.onclick=()=>show(c);box.appendChild(b)})}
 
+function setCount(c){objCount=Math.min(OBJ_MAX,Math.max(OBJ_MIN,c));$('objcount').textContent=objCount;$('objminus').disabled=objCount<=OBJ_MIN;$('objplus').disabled=objCount>=OBJ_MAX}
 function setLevel(lv){level=lv;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lv===lv)))}
 
 function render(t){
@@ -292,19 +311,23 @@ function render(t){
   $('svgbox').replaceChildren(draw(t));
   $('rows').innerHTML=rowsFor(t);
   $('code').textContent=codeOf(t);
-  $('summary').textContent=`${LEVELS[t.level].name} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות`;
+  $('summary').textContent=`${LEVELS[t.level].name} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`;
   pushRecent(codeOf(t));
 }
 
 function show(code){
-  const m=/^\s*(IGP\s*[123]|FH\s*1)\s*-\s*(\d{1,9})\s*$/i.exec(code||'');
-  if(!m){$('msg').textContent='הקוד צריך להיראות כך: IGP2-48213 או FH1-48213';return}
-  const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);
-  const t=generate(lv,seed);
+  const m=/^\s*(IGP\s*[123]|FH\s*1)\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
+  if(!m){$('msg').textContent='הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5';return}
+  const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:3);
+  const t=generate(lv,seed,objCount);
   if(!t){$('msg').textContent='לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.';return}
-  $('msg').textContent='';render(t);
+  render(t);
+  $('msg').textContent=t.short>0?`אין מקום ל-${t.count} חפצים במסלול הזה; הונחו ${t.objs.length}.`:'';
 }
-function fresh(){show(`${level}-${10000+Math.floor(Math.random()*90000)}`)}
+function fresh(){show(`${level}-${10000+Math.floor(Math.random()*90000)}-${objCount}`)}
+function changeCount(d){setCount(objCount+d);if(current)show(`${current.level}-${current.seed}-${objCount}`)}
+$('objminus').addEventListener('click',()=>changeCount(-1));
+$('objplus').addEventListener('click',()=>changeCount(1));
 
 document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);fresh()}));
 $('gen').addEventListener('click',fresh);
