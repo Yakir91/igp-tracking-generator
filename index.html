@@ -101,14 +101,15 @@ summary{cursor:pointer;font-weight:600}
 <div class="wrap" dir="rtl">
   <header>
     <h1>מחולל מסלולי גישוש</h1>
-    <p>מסלול אקראי לפי רמת IGP: קווים ישרים, פניות של 90°, שלושה חפצים, והחפץ האחרון בסוף המסלול.</p>
+    <p>מסלול אקראי לפי רמה (IGP 1–3, FH1): קווים ישרים, פניות של 90°, שלושה חפצים, והחפץ האחרון בסוף המסלול.</p>
   </header>
 
   <div class="bar">
     <div class="seg" role="group" aria-label="רמה">
-      <button id="lv1" data-lv="1" aria-pressed="false">IGP 1</button>
-      <button id="lv2" data-lv="2" aria-pressed="true">IGP 2</button>
-      <button id="lv3" data-lv="3" aria-pressed="false">IGP 3</button>
+      <button id="lv1" data-lv="IGP1" aria-pressed="false">IGP 1</button>
+      <button id="lv2" data-lv="IGP2" aria-pressed="true">IGP 2</button>
+      <button id="lv3" data-lv="IGP3" aria-pressed="false">IGP 3</button>
+      <button id="lvfh1" data-lv="FH1" aria-pressed="false">FH1</button>
     </div>
     <button class="btn" id="gen">מסלול חדש</button>
   </div>
@@ -160,10 +161,10 @@ summary{cursor:pointer;font-weight:600}
 
 <script>
 (function(){
-const LEVELS={1:{steps:300,legs:3},2:{steps:400,legs:3},3:{steps:600,legs:5}};
+const LEVELS={IGP1:{name:'IGP 1',steps:300,legs:3},IGP2:{name:'IGP 2',steps:400,legs:3},IGP3:{name:'IGP 3',steps:600,legs:5},FH1:{name:'FH1',steps:800,legs:5}};
 const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
 const $=id=>document.getElementById(id);
-let level=2, current=null;
+let level='IGP2', current=null;
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const num=(id,d)=>{const v=parseInt($(id).value,10);return isFinite(v)&&v>=0?v:d};
@@ -277,35 +278,35 @@ function rowsFor(t){
   return ev.map(e=>{const d=e.at-prev;prev=e.at;return`<tr><td class="n">${e.at}</td><td><div class="ev"><span class="pip ${e.kind}"></span><div>${e.title}<small>${e.sub}</small></div></div></td><td class="n">${e.kind==='flag'?'–':'+'+d}</td></tr>`}).join('');
 }
 
-const codeOf=t=>`IGP${t.level}-${t.seed}`;
+const codeOf=t=>`${t.level}-${t.seed}`;
 function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function recents(){try{return JSON.parse(load('trk-recent')||'[]')}catch(e){return[]}}
 function pushRecent(c){const r=recents().filter(x=>x!==c);r.unshift(c);store('trk-recent',JSON.stringify(r.slice(0,6)));renderRecent()}
 function renderRecent(){const box=$('recent');box.innerHTML='';recents().forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c;b.dir='ltr';b.onclick=()=>show(c);box.appendChild(b)})}
 
-function setLevel(lv){level=lv;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.lv===lv)))}
+function setLevel(lv){level=lv;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lv===lv)))}
 
 function render(t){
   current=t;
   $('svgbox').replaceChildren(draw(t));
   $('rows').innerHTML=rowsFor(t);
   $('code').textContent=codeOf(t);
-  $('summary').textContent=`IGP ${t.level} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות`;
+  $('summary').textContent=`${LEVELS[t.level].name} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות`;
   pushRecent(codeOf(t));
 }
 
 function show(code){
-  const m=/^\s*IGP\s*([123])\s*-\s*(\d{1,9})\s*$/i.exec(code||'');
-  if(!m){$('msg').textContent='הקוד צריך להיראות כך: IGP2-48213';return}
-  const lv=+m[1],seed=+m[2];setLevel(lv);
+  const m=/^\s*(IGP\s*[123]|FH\s*1)\s*-\s*(\d{1,9})\s*$/i.exec(code||'');
+  if(!m){$('msg').textContent='הקוד צריך להיראות כך: IGP2-48213 או FH1-48213';return}
+  const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);
   const t=generate(lv,seed);
   if(!t){$('msg').textContent='לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.';return}
   $('msg').textContent='';render(t);
 }
-function fresh(){show(`IGP${level}-${10000+Math.floor(Math.random()*90000)}`)}
+function fresh(){show(`${level}-${10000+Math.floor(Math.random()*90000)}`)}
 
-document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{setLevel(+b.dataset.lv);fresh()}));
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);fresh()}));
 $('gen').addEventListener('click',fresh);
 $('loadbtn').addEventListener('click',()=>show($('codein').value));
 $('codein').addEventListener('keydown',e=>{if(e.key==='Enter')show($('codein').value)});
