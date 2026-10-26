@@ -101,22 +101,49 @@ summary{cursor:pointer;font-weight:600}
 .lblbg{fill:var(--paper);opacity:.85}
 .scale{stroke:var(--ink);stroke-width:2}
 .mut{fill:var(--muted);font-family:var(--f-body)}
+
+[hidden]{display:none!important}
+/* manual editor */
+.editor{touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
+.editor.objmode{cursor:pointer}
+.areaedge{fill:none;stroke:var(--grid-strong);stroke-width:1.5}
+.endh{fill:var(--accent);fill-opacity:.18;stroke:var(--accent);stroke-width:2}
+.edtools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:6px 8px 8px}
+.edbtns{display:flex;gap:8px}
+.edbtns .btn{padding:8px 14px}
+.hint{margin:0 8px 8px;color:var(--muted);font-size:15px;min-height:1.5em}
+.hint.flash{color:var(--flag);font-weight:600}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.checks li{display:flex;gap:10px;align-items:flex-start;line-height:1.4}
+.checks li::before{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px}
+.checks li.ok::before{content:"✓";background:var(--track);color:var(--paper)}
+.checks li.bad::before{content:"!";background:var(--flag);color:var(--paper)}
+.checks li.info::before{content:"•";background:var(--line);color:var(--ink)}
+.mcode{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mcode .code{overflow-wrap:anywhere;min-width:0;flex:1 1 160px}
+.linkbtn{font:600 14px var(--f-body);background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
 </style>
 </head>
 <body>
 <div class="wrap" dir="rtl">
   <header>
     <h1>מחולל מסלולי גישוש</h1>
-    <p>מסלול אקראי לפי רמה (IGP 1–3, FH1): קווים ישרים, פניות של 90°, שלושה חפצים, והחפץ האחרון בסוף המסלול.</p>
+    <p>מסלול לפי רמה (IGP 1–3, FH1): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.</p>
   </header>
 
+  <div class="seg" id="tabs" role="group" aria-label="סוג מסלול">
+    <button id="tabRandom" data-mode="random" aria-pressed="true">מסלול אקראי</button>
+    <button id="tabManual" data-mode="manual" aria-pressed="false">ציור ידני</button>
+  </div>
+
   <div class="bar">
-    <div class="seg" role="group" aria-label="רמה">
+    <div class="seg" id="levels" role="group" aria-label="רמה">
       <button id="lv1" data-lv="IGP1" aria-pressed="false">IGP 1</button>
       <button id="lv2" data-lv="IGP2" aria-pressed="true">IGP 2</button>
       <button id="lv3" data-lv="IGP3" aria-pressed="false">IGP 3</button>
       <button id="lvfh1" data-lv="FH1" aria-pressed="false">FH1</button>
     </div>
+    <span class="bar" id="randomCtl">
     <div class="stepper" role="group" aria-label="מספר חפצים">
       <span class="stlbl">חפצים</span>
       <button id="objminus" aria-label="הסר חפץ">−</button>
@@ -124,15 +151,57 @@ summary{cursor:pointer;font-weight:600}
       <button id="objplus" aria-label="הוסף חפץ">+</button>
     </div>
     <button class="btn" id="gen">מסלול חדש</button>
+    </span>
   </div>
 
   <div class="notice" id="msg" role="status" hidden></div>
 
-  <div class="main">
+  <div class="main" id="manualView" hidden>
+    <section class="panel map" aria-label="ציור מסלול">
+      <div class="edtools">
+        <div class="seg" id="tool" role="group" aria-label="כלי">
+          <button id="toolDraw" data-tool="draw" aria-pressed="true">ציור מסלול</button>
+          <button id="toolObj" data-tool="obj" aria-pressed="false">הנחת חפצים</button>
+        </div>
+        <div class="edbtns">
+          <button class="btn ghost" id="undo">בטל פעולה</button>
+          <button class="btn ghost" id="clear">נקה</button>
+        </div>
+      </div>
+      <p class="hint" id="hint" aria-live="polite"></p>
+      <div id="edbox"></div>
+    </section>
+
+    <div class="tools">
+      <section class="panel log">
+        <h2>בדיקת המסלול</h2>
+        <p class="summary" id="mSummary"></p>
+        <ul class="checks" id="checks"></ul>
+      </section>
+      <section class="panel log">
+        <h2>דף הנחת מסלול</h2>
+        <table>
+          <thead><tr><th>צעד</th><th>מה עושים</th><th>מהקודם</th></tr></thead>
+          <tbody id="mRows"></tbody>
+        </table>
+      </section>
+      <section class="panel log">
+        <h2>קוד המסלול</h2>
+        <div class="mcode">
+          <span class="code" id="mCode" dir="ltr"></span>
+          <button class="btn ghost" id="mCopy">העתק קוד</button>
+        </div>
+        <p class="note">את הקוד אפשר לשלוח ולטעון בלשונית "מסלול אקראי", בתיבת טעינת מסלול לפי קוד.</p>
+      </section>
+    </div>
+  </div>
+
+  <div class="main" id="randomView">
     <section class="panel map" aria-label="מפת המסלול">
       <div class="maphead">
         <span class="summary" id="summary"></span>
         <span>קוד: <span class="code" id="code" dir="ltr"></span></span>
+        <button class="linkbtn" id="toManual">ערוך ידנית</button>
       </div>
       <div id="svgbox"></div>
     </section>
@@ -253,20 +322,26 @@ function draw(t){
   let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
   const ext=Math.max(x1-x0,y1-y0,120),pad=ext*0.16,s=ext*0.03;
   x0-=pad;x1+=pad;y0-=pad;y1+=pad*1.35;
-  const W=x1-x0,H=y1-y0;
-  const svg=el('svg',{viewBox:`${x0} ${y0} ${W} ${H}`,role:'img','aria-label':'מפת מסלול הגישוש'});
+  const svg=el('svg',{viewBox:`${x0} ${y0} ${x1-x0} ${y1-y0}`,role:'img','aria-label':'מפת מסלול הגישוש'});
+  drawInto(svg,t,{x0,y0,x1,y1,pad,s,scale:true});
+  return svg;
+}
+
+function drawInto(svg,t,B){
+  const {x0,y0,x1,y1,pad,s}=B;
   for(let x=Math.ceil(x0/10)*10;x<=x1;x+=10)el('line',{x1:x,y1:y0,x2:x,y2:y1,class:x%50===0?'g2':'g1','vector-effect':'non-scaling-stroke'},svg);
   for(let y=Math.ceil(y0/10)*10;y<=y1;y+=10)el('line',{x1:x0,y1:y,x2:x1,y2:y,class:y%50===0?'g2':'g1','vector-effect':'non-scaling-stroke'},svg);
+  if(!t.pts.length)return svg;
   el('polyline',{points:t.pts.map(p=>p.join(',')).join(' '),class:'trk','vector-effect':'non-scaling-stroke'},svg);
   // leg labels — each one tries several spots and takes the first that overlaps nothing
   const fs=s*1.15;
   const hit=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
   const box=(cx,cy,r)=>({x:cx-r,y:cy-r,w:2*r,h:2*r});
   const obstacles=[], trackBoxes=[];
-  t.objs.forEach((o,i)=>{const[x,y]=along(t,o);obstacles.push(box(x,y,s*(i===t.objs.length-1?1.8:1.5)))});
+  t.objs.forEach(o=>{const[x,y]=along(t,o);obstacles.push(box(x,y,s*(o.cum===t.steps?1.8:1.5)))});
   t.pts.forEach(p=>obstacles.push(box(p[0],p[1],s*0.7)));
   obstacles.push({x:t.pts[0][0]-s*3.3,y:t.pts[0][1]-s*3.2,w:s*2.5,h:s*3.8});
-  obstacles.push({x:x0+pad*0.5-s,y:y1-pad*0.45-s*2.2,w:50+s*2,h:s*3});
+  if(B.scale)obstacles.push({x:x0+pad*0.5-s,y:y1-pad*0.45-s*2.2,w:50+s*2,h:s*3});
   for(let i=0;i<t.lens.length;i++){const a=t.pts[i],b=t.pts[i+1],q=s*0.3;
     trackBoxes.push({x:Math.min(a[0],b[0])-q,y:Math.min(a[1],b[1])-q,w:Math.abs(a[0]-b[0])+2*q,h:Math.abs(a[1]-b[1])+2*q})}
   const placed=[];
@@ -307,10 +382,11 @@ function draw(t){
   // objects
   t.objs.forEach((o,i)=>{
     const [x,y]=along(t,o),r=s*1.05;
-    if(i===t.objs.length-1)el('circle',{cx:x,cy:y,r:r*1.65,class:'objring','vector-effect':'non-scaling-stroke'},svg);
+    if(o.cum===t.steps)el('circle',{cx:x,cy:y,r:r*1.65,class:'objring','vector-effect':'non-scaling-stroke'},svg);
     el('rect',{x:x-r,y:y-r,width:r*2,height:r*2,rx:r*0.2,transform:`rotate(45 ${x} ${y})`,class:'objd'},svg);
     el('text',{x,y:y+r*0.42,'text-anchor':'middle','font-size':r*1.2,class:'objt'},svg,i+1);
   });
+  if(!B.scale)return svg;
   // scale bar
   const sy=y1-pad*0.45,sx=x0+pad*0.5;
   el('line',{x1:sx,y1:sy,x2:sx+50,y2:sy,class:'scale','vector-effect':'non-scaling-stroke'},svg);
@@ -324,7 +400,7 @@ function rowsFor(t){
   const ev=[{at:0,kind:'flag',title:'דגל התחלה',sub:'יציאה ישר קדימה'}];
   let cum=0;
   t.lens.forEach((L,i)=>{cum+=L;if(i<t.lens.length-1)ev.push({at:cum,kind:'turn',title:t.turns[i]===1?'פנייה ימינה':'פנייה שמאלה',sub:`סוף צלע ${i+1} (${L} צעדים)`})});
-  t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:`חפץ ${i+1}`,sub:i===t.objs.length-1?'סוף המסלול':`צלע ${o.leg+1}, ${o.off} צעדים מתחילת הצלע`}));
+  t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:`חפץ ${i+1}`,sub:o.cum===t.steps?'סוף המסלול':`צלע ${o.leg+1}, ${o.off} צעדים מתחילת הצלע`}));
   ev.sort((a,b)=>a.at-b.at||(a.kind==='obj'?1:-1));
   let prev=0;
   return ev.map(e=>{const d=e.at-prev;prev=e.at;return`<tr><td class="n">${e.at}</td><td><div class="ev"><span class="pip ${e.kind}"></span><div>${e.title}<small>${e.sub}</small></div></div></td><td class="n">${e.kind==='flag'?'–':'+'+d}</td></tr>`}).join('');
@@ -339,7 +415,7 @@ function renderRecent(){const box=$('recent');box.innerHTML='';recents().forEach
 
 function setCount(c){objCount=Math.min(OBJ_MAX,Math.max(OBJ_MIN,c));$('objcount').textContent=objCount;$('objminus').disabled=objCount<=OBJ_MIN;$('objplus').disabled=objCount>=(current?current.maxFit:OBJ_MAX)}
 function note(text){$('msg').textContent=text||'';$('msg').hidden=!text}
-function setLevel(lv){level=lv;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lv===lv)))}
+function setLevel(lv){level=lv;document.querySelectorAll('#levels button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lv===lv)))}
 
 function render(t){
   current=t;
@@ -351,6 +427,7 @@ function render(t){
 }
 
 function show(code){
+  if(/^\s*M\s*-/i.test(code||'')){loadManual(code);return}
   const m=/^\s*(IGP\s*[123]|FH\s*1)\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
   if(!m){note('הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5');return}
   const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:3);
@@ -366,7 +443,190 @@ function changeCount(d){setCount(objCount+d);if(current)show(`${current.level}-$
 $('objminus').addEventListener('click',()=>changeCount(-1));
 $('objplus').addEventListener('click',()=>changeCount(1));
 
-document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);fresh()}));
+document.querySelectorAll('#levels button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);if(mode==='random')fresh();else renderEditor()}));
+
+/* ---------- manual drawing ---------- */
+const AREA=400, EPAD=16, ES=AREA*0.03;
+const EB={x0:-EPAD,y0:-EPAD,x1:AREA+EPAD,y1:AREA+EPAD,pad:EPAD,s:ES,scale:false};
+let mode='random', tool='draw', ed={corners:[],objs:[]}, live=null, axis=null, dragging=false, history=[];
+const snap10=v=>Math.round(v/10)*10;
+const headOf=(a,b)=>b[1]<a[1]?0:b[0]>a[0]?1:b[1]>a[1]?2:3;
+
+// turn corner points + object positions (steps from the flag) into the same track shape the generator uses
+function trackFrom(corners,objCums){
+  const pts=corners.map(p=>p.slice()),lens=[],heads=[],turns=[];
+  for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];lens.push(Math.abs(b[0]-a[0])+Math.abs(b[1]-a[1]));heads.push(headOf(a,b))}
+  for(let i=1;i<heads.length;i++)turns.push((heads[i]-heads[i-1]+4)%4===1?1:-1);
+  const steps=lens.reduce((a,b)=>a+b,0);
+  const objs=[...new Set(objCums)].filter(c=>c>0&&c<=steps).sort((a,b)=>a-b).map(c=>{
+    let st=0;for(let i=0;i<lens.length;i++){if(c<=st+lens[i])return{leg:i,off:c-st,cum:c};st+=lens[i]}
+  });
+  return{pts,lens,heads,turns,steps,objs,level,manual:true};
+}
+function edTrack(){
+  const c=ed.corners.slice(),last=c[c.length-1];
+  if(live&&last&&(live[0]!==last[0]||live[1]!==last[1]))c.push(live);
+  return trackFrom(c,ed.objs);
+}
+
+const edSvg=el('svg',{viewBox:`${EB.x0} ${EB.y0} ${EB.x1-EB.x0} ${EB.y1-EB.y0}`,class:'editor',role:'img','aria-label':'מפה לציור מסלול'});
+const edG=el('g',{},edSvg);
+$('edbox').appendChild(edSvg);
+
+function setHint(text,flash){$('hint').textContent=text;$('hint').classList.toggle('flash',!!flash)}
+function defaultHint(){
+  if(tool==='obj')return ed.corners.length>1?'גע על קו המסלול כדי להניח חפץ. נגיעה בחפץ קיים מסירה אותו.':'קודם צייר מסלול, ואז אפשר להניח עליו חפצים.';
+  return ed.corners.length?'גרור מהנקודה המסומנת בסוף המסלול כדי להמשיך. שינוי כיוון יוצר פנייה, וגרירה אחורה מקצרת את הצלע.':'גע במפה כדי להציב את הדגל, ובלי להרים את האצבע גרור כדי לצייר את הצלע הראשונה.';
+}
+
+function renderEditor(){
+  const t=edTrack();
+  edG.replaceChildren();
+  drawInto(edG,t,EB);
+  el('rect',{x:0,y:0,width:AREA,height:AREA,class:'areaedge','vector-effect':'non-scaling-stroke'},edG);
+  if(!ed.corners.length)el('text',{x:AREA/2,y:AREA/2,'text-anchor':'middle','font-size':ES*1.4,class:'mut'},edG,'גע כאן כדי להציב את הדגל');
+  else if(tool==='draw'){const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG)}
+  edSvg.classList.toggle('objmode',tool==='obj');
+  if(!dragging)setHint(defaultHint());
+  // side panels
+  const n=t.lens.length;
+  $('mSummary').textContent=n?`${t.steps} צעדים · ${n} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`:'עדיין אין מסלול.';
+  $('checks').innerHTML=checksFor(t).map(c=>`<li class="${c[0]}">${c[1]}</li>`).join('');
+  $('mRows').innerHTML=t.pts.length?rowsFor(t):'';
+  $('mCode').textContent=n?manualCode(t):'–';
+}
+
+function checksFor(t){
+  if(!t.lens.length)return[['info','צייר מסלול כדי לבדוק אותו מול כללי הרמה.']];
+  const L=LEVELS[level],S=settings(),n=t.lens.length,out=[];
+  out.push([t.steps===L.steps?'ok':'bad',`אורך: ${t.steps} מתוך ${L.steps} צעדים (${L.name})`]);
+  out.push([n===L.legs?'ok':'bad',`צלעות: ${n} מתוך ${L.legs} (${L.legs-1} פניות)`]);
+  out.push([t.objs.some(o=>o.cum===t.steps)?'ok':'bad',t.objs.some(o=>o.cum===t.steps)?'יש חפץ בסוף המסלול':'אין חפץ בסוף המסלול']);
+  out.push(['info',`${t.objs.length} חפצים על המסלול`]);
+  const bad=[];
+  t.objs.forEach((o,i)=>{
+    const k=i+1;if(o.cum===t.steps)return;
+    if(o.cum<S.start)bad.push(`חפץ ${k}: ${o.cum} צעדים מהדגל (מינימום ${S.start})`);
+    if(o.leg<n-1&&t.lens[o.leg]-o.off<S.before)bad.push(`חפץ ${k}: ${t.lens[o.leg]-o.off} צעדים לפני פנייה (מינימום ${S.before})`);
+    if(o.leg>0&&o.off<S.after)bad.push(`חפץ ${k}: ${o.off} צעדים אחרי פנייה (מינימום ${S.after})`);
+  });
+  for(let i=1;i<t.objs.length;i++){const d=t.objs[i].cum-t.objs[i-1].cum;if(d<S.gap)bad.push(`חפצים ${i} ו-${i+1}: ${d} צעדים ביניהם (מינימום ${S.gap})`)}
+  const segs=t.lens.map((_,i)=>[t.pts[i],t.pts[i+1]]);
+  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=segDist(segs[i],segs[j]);if(d<S.sep)bad.push(d===0?`צלעות ${i+1} ו-${j+1} נחתכות`:`צלעות ${i+1} ו-${j+1} קרובות מדי (${Math.round(d)} צעדים, מינימום ${S.sep})`)}
+  if(bad.length)bad.forEach(b=>out.push(['bad',b]));else out.push(['ok','מרחקי החפצים והצלעות תקינים']);
+  return out;
+}
+
+// code: M-<dir><len>...-<object positions>, e.g. M-U120R80U100-90.200.300
+function manualCode(t){
+  const legs=t.lens.map((L,i)=>'URDL'[t.heads[i]]+L).join('');
+  return 'M-'+legs+(t.objs.length?'-'+t.objs.map(o=>o.cum).join('.'):'');
+}
+function loadManual(code){
+  const m=/^\s*M\s*-\s*((?:[URDL]\d{1,4})+)\s*(?:-\s*(\d+(?:\.\d+)*))?\s*$/i.exec(code||'');
+  if(!m){note('קוד של מסלול ידני צריך להיראות כך: M-U120R80U100-90.200.300');return}
+  let p=[0,0];const c=[[0,0]];
+  m[1].toUpperCase().match(/[URDL]\d+/g).forEach(s=>{const d=DIRS['URDL'.indexOf(s[0])],L=+s.slice(1);p=[p[0]+d[0]*L,p[1]+d[1]*L];c.push(p.slice())});
+  const xs=c.map(q=>q[0]),ys=c.map(q=>q[1]);
+  const ox=snap10((AREA-(Math.max(...xs)-Math.min(...xs)))/2-Math.min(...xs)),oy=snap10((AREA-(Math.max(...ys)-Math.min(...ys)))/2-Math.min(...ys));
+  snapshot();
+  ed={corners:c.map(q=>[q[0]+ox,q[1]+oy]),objs:m[2]?m[2].split('.').map(Number):[]};
+  live=null;axis=null;
+  const t=edTrack(),fit=Object.keys(LEVELS).find(k=>LEVELS[k].steps===t.steps&&LEVELS[k].legs===t.lens.length);
+  if(fit)setLevel(fit);
+  setMode('manual');saveDraft();renderEditor();
+  note(Math.max(...xs)-Math.min(...xs)>AREA||Math.max(...ys)-Math.min(...ys)>AREA?'המסלול גדול מהמפה, ולכן חלק ממנו מחוץ לשטח הציור.':'');
+}
+
+function snapshot(){history.push(JSON.stringify(ed));if(history.length>100)history.shift()}
+function saveDraft(){store('trk-manual',JSON.stringify(ed))}
+
+function toPt(e){
+  const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(edSvg.getScreenCTM().inverse());
+  return{x:Math.min(AREA,Math.max(0,p.x)),y:Math.min(AREA,Math.max(0,p.y))};
+}
+
+// extend the track toward the finger: legs follow one axis; a sideways move commits a 90° turn
+function extend(q,depth=0){
+  const cs=ed.corners,c=cs[cs.length-1],dx=q.x-c[0],dy=q.y-c[1];
+  const prevAx=cs.length>=2?(cs[cs.length-2][1]===c[1]?'h':'v'):null;
+  if(!axis){
+    if(Math.max(Math.abs(dx),Math.abs(dy))<8){live=null;return}
+    const ax=Math.abs(dx)>=Math.abs(dy)?'h':'v';
+    if(ax===prevAx&&depth<6){cs.pop();live=null;axis=ax;return extend(q,depth+1)} // back on the previous leg: edit it
+    axis=ax;
+  }
+  const alongV=axis==='h'?dx:dy,perp=axis==='h'?dy:dx,len=snap10(alongV);
+  live=axis==='h'?[c[0]+len,c[1]]:[c[0],c[1]+len];
+  if(Math.abs(perp)>=15&&depth<6){
+    if(Math.abs(len)>=10){cs.push(live);live=null;axis=null;return extend(q,depth+1)}
+    axis=null;live=null;return extend(q,depth+1);
+  }
+}
+
+function placeObjAt(p){
+  const t=edTrack();
+  if(!t.lens.length){setHint('קודם צייר מסלול, ואז אפשר להניח עליו חפצים.',true);return}
+  let best=null,st=0;
+  t.lens.forEach((L,i)=>{
+    const a=t.pts[i],d=DIRS[t.heads[i]];
+    const proj=Math.max(0,Math.min(L,(p.x-a[0])*d[0]+(p.y-a[1])*d[1]));
+    const x=a[0]+d[0]*proj,y=a[1]+d[1]*proj,dist=Math.hypot(p.x-x,p.y-y);
+    if(!best||dist<best.dist)best={dist,cum:st+proj};
+    st+=L;
+  });
+  if(best.dist>20){setHint('גע על קו המסלול עצמו כדי להניח חפץ.',true);return}
+  const cum=Math.max(5,Math.min(t.steps,Math.round(best.cum/5)*5));
+  snapshot();
+  const near=ed.objs.findIndex(c=>Math.abs(c-cum)<=8);
+  if(near>=0)ed.objs.splice(near,1);else ed.objs.push(cum);
+  saveDraft();renderEditor();
+}
+
+edSvg.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  const p=toPt(e);
+  if(tool==='obj'){placeObjAt(p);return}
+  const cs=ed.corners;
+  if(!cs.length){snapshot();ed.corners=[[snap10(p.x),snap10(p.y)]];}
+  else{const end=cs[cs.length-1];
+    if(Math.hypot(p.x-end[0],p.y-end[1])>25){setHint('כדי להמשיך, התחל לגרור מהנקודה המסומנת בסוף המסלול.',true);return}
+    snapshot();}
+  dragging=true;axis=null;live=null;
+  try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
+  setHint('גורר… שנה כיוון כדי ליצור פנייה.');
+  renderEditor();
+});
+edSvg.addEventListener('pointermove',e=>{if(!dragging)return;e.preventDefault();extend(toPt(e));renderEditor()});
+function endDrag(){
+  if(!dragging)return;
+  const cs=ed.corners,last=cs[cs.length-1];
+  if(live&&(live[0]!==last[0]||live[1]!==last[1]))cs.push(live);
+  live=null;axis=null;dragging=false;saveDraft();renderEditor();
+}
+edSvg.addEventListener('pointerup',endDrag);
+edSvg.addEventListener('pointercancel',endDrag);
+
+function setTool(tl){tool=tl;document.querySelectorAll('#tool button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tl)));renderEditor()}
+document.querySelectorAll('#tool button').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
+$('undo').addEventListener('click',()=>{if(!history.length){setHint('אין פעולה לבטל.',true);return}ed=JSON.parse(history.pop());saveDraft();renderEditor()});
+$('clear').addEventListener('click',()=>{if(!ed.corners.length)return;snapshot();ed={corners:[],objs:[]};saveDraft();setTool('draw')});
+$('mCopy').addEventListener('click',()=>{
+  const t=edTrack();if(!t.lens.length)return;const c=manualCode(t);
+  pushRecent(c);
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents($('mCode'));const s=getSelection();s.removeAllRanges();s.addRange(r);note('הקוד מסומן, אפשר להעתיק')};
+  try{navigator.clipboard.writeText(c).then(()=>note('הקוד הועתק'),fallback)}catch(e){fallback()}
+});
+$('toManual').addEventListener('click',()=>{if(current)loadManual(manualCode(current))});
+
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===m)));
+  $('randomView').hidden=m!=='random';$('randomCtl').hidden=m!=='random';$('manualView').hidden=m!=='manual';
+  store('trk-mode',m);note('');
+  if(m==='manual')renderEditor();
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
 $('gen').addEventListener('click',fresh);
 $('loadbtn').addEventListener('click',()=>show($('codein').value));
 $('codein').addEventListener('keydown',e=>{if(e.key==='Enter')show($('codein').value)});
@@ -376,10 +636,12 @@ $('copybtn').addEventListener('click',()=>{
   const fallback=()=>{$('codein').value=c;$('codein').select();note('הקוד מסומן בתיבה, אפשר להעתיק')};
   try{navigator.clipboard.writeText(c).then(done,fallback)}catch(e){fallback()}
 });
-['sBefore','sAfter','sStart','sGap','sLeg','sSep'].forEach(id=>$(id).addEventListener('change',()=>current&&show(codeOf(current))));
+['sBefore','sAfter','sStart','sGap','sLeg','sSep'].forEach(id=>$(id).addEventListener('change',()=>{if(current)show(codeOf(current));if(mode==='manual')renderEditor()}));
 
 renderRecent();
+try{const d=JSON.parse(load('trk-manual')||'null');if(d&&Array.isArray(d.corners)&&Array.isArray(d.objs))ed=d}catch(e){}
 show('IGP2-48213');
+if(load('trk-mode')==='manual')setMode('manual');
 })();
 </script>
 
