@@ -211,6 +211,9 @@ function tryTrack(rng,cfg,S){
     for(let o=Math.ceil(lo/5)*5;o<=hi;o+=5){if(cum+o>=S.start&&o>0)cand.push({leg:i,off:o,cum:cum+o})}
     cum+=L;
   });
+  // the default 3 objects go one per leg: the two middle ones need two legs (not the last) with room
+  const roomy=new Set(cand.filter(c=>c.leg<n-1).map(c=>c.leg));
+  if(roomy.size<Math.min(2,n-1))return null;
   return{lens,pts,turns,heads,cand};
 }
 
@@ -218,9 +221,13 @@ function tryTrack(rng,cfg,S){
 // uses the same random draw for a given track, so adding one keeps the others in place.
 function placeObjects(t,count,S){
   // build the full random sequence once; its length is the most this track can hold
-  const picked=[];
+  // First fill legs one object each (the last leg already holds the end object).
+  // Only when every leg has one do extra objects share a leg.
+  const picked=[],n0=t.lens.length;
   for(let k=0;k<OBJ_MAX-1;k++){
-    const ok=t.cand.filter(c=>picked.every(p=>Math.abs(p.cum-c.cum)>=S.gap));
+    let ok=t.cand.filter(c=>picked.every(p=>Math.abs(p.cum-c.cum)>=S.gap));
+    const fresh=ok.filter(c=>c.leg<n0-1&&!picked.some(p=>p.leg===c.leg));
+    if(fresh.length)ok=fresh;
     if(!ok.length)break;
     const r=mulberry32((t.seed*2654435761+(k+1)*40503)>>>0);r();
     picked.push(ok[Math.floor(r()*ok.length)]);
