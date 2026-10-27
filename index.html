@@ -268,7 +268,8 @@ const LEVELS={
   IGP2:{name:'IGP 2',steps:400,legs:3},
   IGP3:{name:'IGP 3',steps:600,legs:5},
   FH1:{name:'FH1',steps:800,legs:5},
-  FH2:{name:'FH2',steps:1200,legs:8,acute:1,cross:1,objs:7}
+  // FH2: the sharp turn is always the last turn; the first object lies at least 100 steps from the flag
+  FH2:{name:'FH2',steps:1200,legs:7,acute:1,cross:1,objs:4,firstObj:100}
 };
 // 8 headings, 45° apart, clockwise from "up" (screen y grows downward).
 // A 90° turn changes the heading by 2, the sharp 45° turn by 3.
@@ -300,7 +301,8 @@ function tryTrack(rng,cfg,S){
   let units=w.map(x=>m+Math.floor(free*x/sw));let rest=U-units.reduce((a,b)=>a+b,0);
   while(rest-->0)units[Math.floor(rng()*n)]++;
   const lens=units.map(u=>u*10);
-  const acuteAt=cfg.acute?1+Math.floor(rng()*(n-1)):-1; // which turn is the sharp one
+  const acuteAt=cfg.acute?n-1:-1; // the sharp turn is the last one (before the last leg)
+  const first=Math.max(S.start,cfg.firstObj||0);
   let h=0,p=[0,0];const pts=[p.slice()],turns=[],heads=[0];
   for(let i=0;i<n;i++){
     if(i>0){const t=rng()<0.5?1:-1,mag=i===acuteAt?3:2;turns.push(t*mag);h=(h+t*mag+8)%8;heads.push(h)}
@@ -312,8 +314,8 @@ function tryTrack(rng,cfg,S){
   const cand=[];let cum=0;
   lens.forEach((L,i)=>{
     const last=i===n-1;
-    const lo=i===0?S.start:S.after, hi=last?L-S.gap:L-S.before;
-    for(let o=Math.ceil(lo/5)*5;o<=hi;o+=5){if(cum+o>=S.start&&o>0)cand.push({leg:i,off:o,cum:cum+o})}
+    const lo=i===0?first:S.after, hi=last?L-S.gap:L-S.before;
+    for(let o=Math.ceil(lo/5)*5;o<=hi;o+=5){if(cum+o>=first&&o>0)cand.push({leg:i,off:o,cum:cum+o})}
     cum+=L;
   });
   // the default 3 objects go one per leg: the two middle ones need two legs (not the last) with room
@@ -681,7 +683,10 @@ function checksFor(t){
   const L=LEVELS[level],S=settings(),n=t.lens.length,out=[];
   out.push([t.steps===L.steps?'ok':'bad',`אורך: ${t.steps} מתוך ${L.steps} צעדים (${L.name})`]);
   out.push([n===L.legs?'ok':'bad',`צלעות: ${n} מתוך ${L.legs} (${L.legs-1} פניות)`]);
+  const firstMin=Math.max(S.start,L.firstObj||0);
   const sharp=t.turns.filter(v=>Math.abs(v)===3).length,needSharp=L.acute||0;
+  const sharpAt=t.turns.findIndex(v=>Math.abs(v)===3);
+  if(needSharp&&sharp===1&&sharpAt!==t.turns.length-1)out.push(['bad',`הפנייה החדה צריכה להיות הפנייה האחרונה (כרגע היא פנייה ${sharpAt+1} מתוך ${t.turns.length})`]);
   if(needSharp||sharp)out.push([sharp===needSharp?'ok':'bad',
     !needSharp?'ברמה הזו אין פנייה חדה':sharp===needSharp?'יש פנייה חדה אחת (זווית 45°)':sharp?`${sharp} פניות חדות (צריך אחת בלבד)`:'אין פנייה חדה (צריך אחת)']);
   const cr=t.cross||[];
@@ -697,7 +702,7 @@ function checksFor(t){
   const bad=[];
   t.objs.forEach((o,i)=>{
     const k=i+1;if(o.cum===t.steps)return;
-    if(o.cum<S.start)bad.push(`חפץ ${k}: ${o.cum} צעדים מהדגל (מינימום ${S.start})`);
+    if(o.cum<firstMin)bad.push(`חפץ ${k}: ${o.cum} צעדים מהדגל (מינימום ${firstMin})`);
     if(o.leg<n-1&&t.lens[o.leg]-o.off<S.before)bad.push(`חפץ ${k}: ${t.lens[o.leg]-o.off} צעדים לפני פנייה (מינימום ${S.before})`);
     if(o.leg>0&&o.off<S.after)bad.push(`חפץ ${k}: ${o.off} צעדים אחרי פנייה (מינימום ${S.after})`);
   });
