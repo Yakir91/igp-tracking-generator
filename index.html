@@ -362,6 +362,12 @@ function crossInfo(t,c,S,near=10){
     if(h.leg<n-1&&L-h.off<S.cross)probs.push(`חוצים ${L-h.off} צעדים לפני ${turnName(t,h.leg)} (מינימום ${S.cross})`);
     (t.objs||[]).forEach((o,k)=>{const d=Math.abs(o.cum-h.cum);if(d<CROSS_OBJ)probs.push(`חוצים ${d} צעדים מחפץ ${k+1} (מינימום ${CROSS_OBJ})`)});
   });
+  // Never cut across a turn: not through both legs of the sharp turn, and not passing close to any turn point
+  for(let k=1;k<n;k++){
+    const sharp=Math.abs(t.turns[k-1])===3,d=Math.round(ptSeg(t.pts[k],a,b));
+    if(sharp&&hits.some(h=>h.leg===k-1)&&hits.some(h=>h.leg===k))probs.push('חוצים את הפנייה החדה (את שתי הצלעות שלה)');
+    else if(d<S.cross)probs.push(`עוברים ${d} צעדים מ${sharp?'הפנייה החדה':'נקודת פנייה'} (מינימום ${S.cross})`);
+  }
   const legs=new Set(hits.map(h=>h.leg));
   if(legs.size<2)probs.push(legs.size?'חוצים רק צלע אחת (צריך לפחות שתיים)':'לא חוצים את המסלול');
   return{hits,probs:[...new Set(probs)]};
