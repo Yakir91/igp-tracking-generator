@@ -13,7 +13,7 @@
   --bg:#F1F3EC; --paper:#FBFCF8; --ink:#1E2A20; --muted:#5E6B5F; --line:#D5DBCD;
   --grid:#E2E7DA; --grid-strong:#CBD3C1;
   --track:#2F5D3A; --flag:#D24A12; --obj:#B97A12; --obj-ink:#FFFFFF;
-  --accent:#2F5D3A; --accent-ink:#FFFFFF;
+  --accent:#2F5D3A; --accent-ink:#FFFFFF; --cross:#6A4BB0;
   --f-display:"Secular One","Assistant",system-ui,sans-serif;
   --f-body:"Assistant",system-ui,"Segoe UI",Arial,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -22,12 +22,12 @@
   --bg:#141A15; --paper:#1B231C; --ink:#E6ECE2; --muted:#9AA898; --line:#2F3A30;
   --grid:#222C23; --grid-strong:#2E3A2F;
   --track:#7FC08D; --flag:#FF7A3D; --obj:#E9B04A; --obj-ink:#1B1406;
-  --accent:#7FC08D; --accent-ink:#0F1A11; color-scheme:dark }}
+  --accent:#7FC08D; --accent-ink:#0F1A11; --cross:#B9A2F0; color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#141A15; --paper:#1B231C; --ink:#E6ECE2; --muted:#9AA898; --line:#2F3A30;
   --grid:#222C23; --grid-strong:#2E3A2F;
   --track:#7FC08D; --flag:#FF7A3D; --obj:#E9B04A; --obj-ink:#1B1406;
-  --accent:#7FC08D; --accent-ink:#0F1A11; color-scheme:dark }
+  --accent:#7FC08D; --accent-ink:#0F1A11; --cross:#B9A2F0; color-scheme:dark }
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
@@ -71,6 +71,8 @@ td.n{font-family:var(--f-mono);font-size:14px;white-space:nowrap}
 .pip.flag{background:var(--flag);clip-path:polygon(0 0,100% 30%,0 60%)}
 .pip.obj{background:var(--obj);transform:rotate(45deg) scale(.8);border-radius:2px}
 .pip.turn{border:2px solid var(--track);border-radius:50%}
+.pip.turn.acute{background:var(--track)}
+.pip.cross{height:0;width:16px;border-top:3px dashed var(--cross)}
 
 .tools{display:flex;flex-direction:column;gap:12px}
 .load{display:flex;gap:8px;flex-wrap:wrap}
@@ -101,6 +103,10 @@ summary{cursor:pointer;font-weight:600}
 .lblbg{fill:var(--paper);opacity:.85}
 .scale{stroke:var(--ink);stroke-width:2}
 .mut{fill:var(--muted);font-family:var(--f-body)}
+.xtrk{stroke:var(--cross);stroke-width:3;stroke-dasharray:9 7;fill:none;stroke-linecap:round}
+.xtrk.draft{opacity:.6}
+.acutept{fill:var(--track);stroke:var(--paper);stroke-width:2}
+.acutelbl{fill:var(--track);font-family:var(--f-mono);font-weight:500}
 
 [hidden]{display:none!important}
 /* manual editor */
@@ -121,6 +127,10 @@ summary{cursor:pointer;font-weight:600}
 .checks li.info::before{content:"•";background:var(--line);color:var(--ink)}
 .mcode{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .mcode .code{overflow-wrap:anywhere;min-width:0;flex:1 1 160px}
+#levels{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 380px;max-width:520px}
+#levels button{min-width:0;padding:10px 4px}
+#tool{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 100%}
+#tool button{min-width:0;padding:10px 6px;line-height:1.2;font-size:15px}
 .linkbtn{font:600 14px var(--f-body);background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
 </style>
 </head>
@@ -128,7 +138,7 @@ summary{cursor:pointer;font-weight:600}
 <div class="wrap" dir="rtl">
   <header>
     <h1>מחולל מסלולי גישוש</h1>
-    <p>מסלול לפי רמה (IGP 1–3, FH1): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.</p>
+    <p>מסלול לפי רמה (IGP 1–3, FH1, FH2): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. ב-FH2 יש גם פנייה חדה של 45° ועקבות חוצות. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.</p>
   </header>
 
   <div class="seg" id="tabs" role="group" aria-label="סוג מסלול">
@@ -142,6 +152,7 @@ summary{cursor:pointer;font-weight:600}
       <button id="lv2" data-lv="IGP2" aria-pressed="true">IGP 2</button>
       <button id="lv3" data-lv="IGP3" aria-pressed="false">IGP 3</button>
       <button id="lvfh1" data-lv="FH1" aria-pressed="false">FH1</button>
+      <button id="lvfh2" data-lv="FH2" aria-pressed="false">FH2</button>
     </div>
     <span class="bar" id="randomCtl">
     <div class="stepper" role="group" aria-label="מספר חפצים">
@@ -162,6 +173,8 @@ summary{cursor:pointer;font-weight:600}
         <div class="seg" id="tool" role="group" aria-label="כלי">
           <button id="toolDraw" data-tool="draw" aria-pressed="true">ציור מסלול</button>
           <button id="toolObj" data-tool="obj" aria-pressed="false">הנחת חפצים</button>
+          <button id="toolAcute" data-tool="acute" aria-pressed="false" hidden>פנייה חדה</button>
+          <button id="toolCross" data-tool="cross" aria-pressed="false" hidden>עקבות חוצות</button>
         </div>
         <div class="edbtns">
           <button class="btn ghost" id="undo">בטל פעולה</button>
@@ -242,6 +255,7 @@ summary{cursor:pointer;font-weight:600}
       <label for="sGap">מינימום צעדים בין חפצים<input id="sGap" type="number" min="10" step="5" value="20"></label>
       <label for="sLeg">אורך צלע מינימלי<input id="sLeg" type="number" min="40" step="10" value="50"></label>
       <label for="sSep">מרחק מינימלי בין צלעות לא סמוכות<input id="sSep" type="number" min="10" step="5" value="40"></label>
+      <label for="sCross">מינימום צעדים בין עקבות חוצות לפנייה (FH2)<input id="sCross" type="number" min="0" step="5" value="40"></label>
     </div>
     <p class="note">קוד מסלול משחזר את אותו מסלול כל עוד ההגדרות זהות. המפה מצוירת עם כיוון ההתחלה למעלה; קו רשת דק = 10 צעדים, קו עבה = 50 צעדים.</p>
   </details>
@@ -249,21 +263,36 @@ summary{cursor:pointer;font-weight:600}
 
 <script>
 (function(){
-const LEVELS={IGP1:{name:'IGP 1',steps:300,legs:3},IGP2:{name:'IGP 2',steps:400,legs:3},IGP3:{name:'IGP 3',steps:600,legs:5},FH1:{name:'FH1',steps:800,legs:5}};
-const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
+const LEVELS={
+  IGP1:{name:'IGP 1',steps:300,legs:3},
+  IGP2:{name:'IGP 2',steps:400,legs:3},
+  IGP3:{name:'IGP 3',steps:600,legs:5},
+  FH1:{name:'FH1',steps:800,legs:5},
+  FH2:{name:'FH2',steps:1200,legs:8,acute:1,cross:1}
+};
+// 8 headings, 45° apart, clockwise from "up" (screen y grows downward).
+// A 90° turn changes the heading by 2, the sharp 45° turn by 3.
+const R2=Math.SQRT1_2;
+const DIRS=[[0,-1],[R2,-R2],[1,0],[R2,R2],[0,1],[-R2,R2],[-1,0],[-R2,-R2]];
+const HEAD_CODE=['U','UR','R','DR','D','DL','L','UL'];
 const $=id=>document.getElementById(id);
 let level='IGP2', current=null, objCount=3;
 const OBJ_MIN=1, OBJ_MAX=12;
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const num=(id,d)=>{const v=parseInt($(id).value,10);return isFinite(v)&&v>=0?v:d};
-function settings(){return{before:num('sBefore',30),after:num('sAfter',30),start:num('sStart',50),gap:Math.max(10,num('sGap',20)),minLeg:Math.max(40,num('sLeg',50)),sep:num('sSep',40)}}
+function settings(){return{before:num('sBefore',30),after:num('sAfter',30),start:num('sStart',50),gap:Math.max(10,num('sGap',20)),minLeg:Math.max(40,num('sLeg',50)),sep:num('sSep',40),cross:num('sCross',40)}}
 
-function segDist(a,b){ // axis-aligned segments
-  const ax0=Math.min(a[0][0],a[1][0]),ax1=Math.max(a[0][0],a[1][0]),ay0=Math.min(a[0][1],a[1][1]),ay1=Math.max(a[0][1],a[1][1]);
-  const bx0=Math.min(b[0][0],b[1][0]),bx1=Math.max(b[0][0],b[1][0]),by0=Math.min(b[0][1],b[1][1]),by1=Math.max(b[0][1],b[1][1]);
-  const dx=Math.max(0,bx0-ax1,ax0-bx1),dy=Math.max(0,by0-ay1,ay0-by1);return Math.hypot(dx,dy)}
+/* ---------- geometry ---------- */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]], dot=(a,b)=>a[0]*b[0]+a[1]*b[1], crs=(a,b)=>a[0]*b[1]-a[1]*b[0];
+const norm8=d=>{d=((d%8)+8)%8;return d>4?d-8:d};
+function ptSeg(p,a,b){const ab=sub(b,a),L2=dot(ab,ab);let t=L2?dot(sub(p,a),ab)/L2:0;t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]-a[0]-ab[0]*t,p[1]-a[1]-ab[1]*t)}
+// where segment a1→a2 crosses b1→b2 (fractions along each), or null; parallel segments never "cross"
+function segX(a1,a2,b1,b2){const r=sub(a2,a1),s=sub(b2,b1),den=crs(r,s);if(Math.abs(den)<1e-9)return null;const qp=sub(b1,a1),ta=crs(qp,s)/den,tb=crs(qp,r)/den,e=1e-9;return ta>=-e&&ta<=1+e&&tb>=-e&&tb<=1+e?{ta,tb}:null}
+function segDist(a,b){if(segX(a[0],a[1],b[0],b[1]))return 0;return Math.min(ptSeg(a[0],b[0],b[1]),ptSeg(a[1],b[0],b[1]),ptSeg(b[0],a[0],a[1]),ptSeg(b[1],a[0],a[1]))}
+function cornersOf(start,legs){let p=start.slice();const c=[p.slice()];legs.forEach(l=>{p=[p[0]+DIRS[l.h][0]*l.L,p[1]+DIRS[l.h][1]*l.L];c.push(p.slice())});return c}
 
+/* ---------- random tracks ---------- */
 function tryTrack(rng,cfg,S){
   const n=cfg.legs,U=cfg.steps/10,m=Math.ceil(S.minLeg/10),free=U-n*m;
   if(free<0)return null;
@@ -271,9 +300,10 @@ function tryTrack(rng,cfg,S){
   let units=w.map(x=>m+Math.floor(free*x/sw));let rest=U-units.reduce((a,b)=>a+b,0);
   while(rest-->0)units[Math.floor(rng()*n)]++;
   const lens=units.map(u=>u*10);
+  const acuteAt=cfg.acute?1+Math.floor(rng()*(n-1)):-1; // which turn is the sharp one
   let h=0,p=[0,0];const pts=[p.slice()],turns=[],heads=[0];
   for(let i=0;i<n;i++){
-    if(i>0){const t=rng()<0.5?1:-1;turns.push(t);h=(h+t+4)%4;heads.push(h)}
+    if(i>0){const t=rng()<0.5?1:-1,mag=i===acuteAt?3:2;turns.push(t*mag);h=(h+t*mag+8)%8;heads.push(h)}
     p=[p[0]+DIRS[h][0]*lens[i],p[1]+DIRS[h][1]*lens[i]];pts.push(p.slice());
   }
   const segs=lens.map((_,i)=>[pts[i],pts[i+1]]);
@@ -295,7 +325,6 @@ function tryTrack(rng,cfg,S){
 // Objects are added one at a time, each at a random valid spot. Object k always
 // uses the same random draw for a given track, so adding one keeps the others in place.
 function placeObjects(t,count,S){
-  // build the full random sequence once; its length is the most this track can hold
   // First fill legs one object each (the last leg already holds the end object).
   // Only when every leg has one do extra objects share a leg.
   const picked=[],n0=t.lens.length;
@@ -313,18 +342,82 @@ function placeObjects(t,count,S){
   t.objs=picked.slice(0,t.count-1).sort((a,b)=>a.cum-b.cum).concat([{leg:n-1,off:t.lens[n-1],cum:t.steps}]);
 }
 
-function generate(lv,seed,count){
-  const cfg=LEVELS[lv],S=settings(),rng=mulberry32(seed*2654435761>>>0);
-  for(let i=0;i<3000;i++){const t=tryTrack(rng,cfg,S);if(t){t.level=lv;t.seed=seed;t.steps=cfg.steps;placeObjects(t,count,S);return t}}
+const CROSS_OBJ=30; // objects stay this many steps (along the track) away from a cross track
+const turnName=(t,k)=>Math.abs(t.turns[k])===3?'הפנייה החדה':'פנייה';
+// Where a cross track [x1,y1,x2,y2] crosses the main track, and which rules it breaks.
+function crossInfo(t,c,S,near=10){
+  const a=[c[0],c[1]],b=[c[2],c[3]],n=t.lens.length,hits=[],probs=[];let st=0;
+  t.lens.forEach((L,i)=>{
+    const p=t.pts[i],q=t.pts[i+1],x=segX(a,b,p,q);
+    if(x){const off=Math.round(x.tb*L);hits.push({leg:i,off,cum:st+off,s:x.ta})}
+    else if(segDist([a,b],[p,q])<near)probs.push(`עוברים צמוד לצלע ${i+1} בלי לחצות אותה`);
+    st+=L;
+  });
+  hits.sort((x,y)=>x.s-y.s);
+  hits.forEach(h=>{
+    const L=t.lens[h.leg];
+    if(h.leg===0)probs.push('חוצים את הצלע הראשונה');
+    else if(h.leg===n-1)probs.push('חוצים את הצלע האחרונה');
+    if(h.leg>0&&h.off<S.cross)probs.push(`חוצים ${h.off} צעדים אחרי ${turnName(t,h.leg-1)} (מינימום ${S.cross})`);
+    if(h.leg<n-1&&L-h.off<S.cross)probs.push(`חוצים ${L-h.off} צעדים לפני ${turnName(t,h.leg)} (מינימום ${S.cross})`);
+    (t.objs||[]).forEach((o,k)=>{const d=Math.abs(o.cum-h.cum);if(d<CROSS_OBJ)probs.push(`חוצים ${d} צעדים מחפץ ${k+1} (מינימום ${CROSS_OBJ})`)});
+  });
+  const legs=new Set(hits.map(h=>h.leg));
+  if(legs.size<2)probs.push(legs.size?'חוצים רק צלע אחת (צריך לפחות שתיים)':'לא חוצים את המסלול');
+  return{hits,probs:[...new Set(probs)]};
+}
+
+// One straight cross track that crosses two different legs, away from turns and from the first/last leg.
+function makeCross(t,S,rng){
+  const xs=t.pts.map(p=>p[0]),ys=t.pts.map(p=>p[1]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),big=(x1-x0)+(y1-y0)+400;
+  const n=t.lens.length,ok=h=>h.leg>0&&h.leg<n-1&&h.off>=S.cross&&h.L-h.off>=S.cross;
+  for(let k=0;k<400;k++){
+    const u=DIRS[Math.floor(rng()*4)]; // the four line orientations: | / — \
+    const P=[x0+rng()*(x1-x0),y0+rng()*(y1-y0)];
+    const A=[P[0]-u[0]*big,P[1]-u[1]*big],B=[P[0]+u[0]*big,P[1]+u[1]*big];
+    const hits=[];
+    t.lens.forEach((L,i)=>{const x=segX(A,B,t.pts[i],t.pts[i+1]);if(x)hits.push({s:x.ta*2*big,leg:i,off:x.tb*L,L})});
+    hits.sort((a,b)=>a.s-b.s);
+    const pairs=[];for(let j=0;j+1<hits.length;j++)if(ok(hits[j])&&ok(hits[j+1])&&hits[j].leg!==hits[j+1].leg)pairs.push(j);
+    if(!pairs.length)continue;
+    const j=pairs[Math.floor(rng()*pairs.length)];
+    const before=j>0?hits[j].s-hits[j-1].s:Infinity,after=j+2<hits.length?hits[j+2].s-hits[j+1].s:Infinity;
+    const m1=Math.min(50,before-20),m2=Math.min(50,after-20);
+    if(m1<25||m2<25)continue;
+    const s1=hits[j].s-m1,s2=hits[j+1].s+m2;
+    const c=[A[0]+u[0]*s1,A[1]+u[1]*s1,A[0]+u[0]*s2,A[1]+u[1]*s2].map(v=>Math.round(v));
+    const info=crossInfo(t,c,S,15);
+    if(!info.probs.length)return c;
+  }
   return null;
 }
 
+function generate(lv,seed,count){
+  const cfg=LEVELS[lv],S=settings(),rng=mulberry32(seed*2654435761>>>0),xr=mulberry32((seed*2246822519+7)>>>0);
+  for(let i=0;i<3000;i++){
+    const t=tryTrack(rng,cfg,S);if(!t)continue;
+    t.level=lv;t.seed=seed;t.steps=cfg.steps;t.cross=[];
+    if(cfg.cross){
+      const c=makeCross(t,S,xr);if(!c)continue;t.cross=[c];
+      // keep objects away from where the cross track meets the track
+      const hits=crossInfo(t,c,S).hits;
+      t.cand=t.cand.filter(o=>hits.every(x=>Math.abs(x.cum-o.cum)>=CROSS_OBJ));
+      if(new Set(t.cand.filter(o=>o.leg<t.lens.length-1).map(o=>o.leg)).size<2)continue;
+    }
+    placeObjects(t,count,S);return t;
+  }
+  return null;
+}
+
+/* ---------- drawing ---------- */
 const NS='http://www.w3.org/2000/svg';
 function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;parent&&parent.appendChild(e);return e}
 const along=(t,o)=>{const a=t.pts[o.leg],d=DIRS[t.heads[o.leg]];return[a[0]+d[0]*o.off,a[1]+d[1]*o.off]};
 
 function draw(t){
   const xs=t.pts.map(p=>p[0]),ys=t.pts.map(p=>p[1]);
+  (t.cross||[]).forEach(c=>{xs.push(c[0],c[2]);ys.push(c[1],c[3])});
   let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
   const ext=Math.max(x1-x0,y1-y0,120),pad=ext*0.16,s=ext*0.03;
   x0-=pad;x1+=pad;y0-=pad;y1+=pad*1.35;
@@ -338,19 +431,28 @@ function drawInto(svg,t,B){
   const gs=B.minor===false?50:10; // on a small screen, 10-step lines get too dense to read
   for(let x=Math.ceil(x0/gs)*gs;x<=x1;x+=gs)el('line',{x1:x,y1:y0,x2:x,y2:y1,class:x%50===0?'g2':'g1','vector-effect':'non-scaling-stroke'},svg);
   for(let y=Math.ceil(y0/gs)*gs;y<=y1;y+=gs)el('line',{x1:x0,y1:y,x2:x1,y2:y,class:y%50===0?'g2':'g1','vector-effect':'non-scaling-stroke'},svg);
+  (t.cross||[]).forEach((c,i)=>el('line',{x1:c[0],y1:c[1],x2:c[2],y2:c[3],class:'xtrk'+(c.draft?' draft':''),'vector-effect':'non-scaling-stroke'},svg));
   if(!t.pts.length)return svg;
   el('polyline',{points:t.pts.map(p=>p.join(',')).join(' '),class:'trk','vector-effect':'non-scaling-stroke'},svg);
   // leg labels — each one tries several spots and takes the first that overlaps nothing
   const fs=s*1.15;
   const hit=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
   const box=(cx,cy,r)=>({x:cx-r,y:cy-r,w:2*r,h:2*r});
-  const obstacles=[], trackBoxes=[];
+  const obstacles=[], trackBoxes=[], diagLegs=[];
   t.objs.forEach(o=>{const[x,y]=along(t,o);obstacles.push(box(x,y,s*(o.cum===t.steps?1.8:1.5)))});
   t.pts.forEach(p=>obstacles.push(box(p[0],p[1],s*0.7)));
   obstacles.push({x:t.pts[0][0]-s*3.3,y:t.pts[0][1]-s*3.2,w:s*2.5,h:s*3.8});
   if(B.scale)obstacles.push({x:x0+pad*0.5-s,y:y1-pad*0.45-s*2.2,w:50+s*2,h:s*3});
+  // sharp turns: mark the point and write 45° outside the narrow angle
+  const acutes=[];
+  for(let i=1;i<t.pts.length-1;i++)if(Math.abs(t.turns[i-1])===3){
+    const u1=DIRS[t.heads[i-1]],u2=DIRS[t.heads[i]],bx=-u1[0]+u2[0],by=-u1[1]+u2[1],bl=Math.hypot(bx,by)||1;
+    const lx=t.pts[i][0]-bx/bl*s*2.6,ly=t.pts[i][1]-by/bl*s*2.6;
+    acutes.push({p:t.pts[i],lx,ly});obstacles.push(box(lx,ly,s*1.4));
+  }
   for(let i=0;i<t.lens.length;i++){const a=t.pts[i],b=t.pts[i+1],q=s*0.3;
-    trackBoxes.push({x:Math.min(a[0],b[0])-q,y:Math.min(a[1],b[1])-q,w:Math.abs(a[0]-b[0])+2*q,h:Math.abs(a[1]-b[1])+2*q})}
+    if(t.heads[i]%2===0)trackBoxes.push({x:Math.min(a[0],b[0])-q,y:Math.min(a[1],b[1])-q,w:Math.abs(a[0]-b[0])+2*q,h:Math.abs(a[1]-b[1])+2*q});
+    else diagLegs.push([a,b]);}
   const placed=[];
   t.lens.forEach((L,i)=>{
     const a=t.pts[i],d=DIRS[t.heads[i]],nx=d[1],ny=-d[0];
@@ -368,6 +470,7 @@ function drawInto(svg,t,B){
         placed.forEach(p=>{if(hit(r,p))cost+=10});
         obstacles.forEach(p=>{if(hit(r,p))cost+=4});
         trackBoxes.forEach(p=>{if(hit(r,p))cost+=4});
+        diagLegs.forEach(g=>{if(ptSeg([mx,my],g[0],g[1])<Math.max(w,h)/2+s*0.2)cost+=4});
         if(r.x<x0||r.y<y0||r.x+w>x1||r.y+h>y1)cost+=3;
         cost+=Math.abs(shift)+(dist>3?0.5:0);
         if(cost<bestCost){bestCost=cost;best=r}
@@ -380,7 +483,11 @@ function drawInto(svg,t,B){
     }
   });
   // turns
-  for(let i=1;i<t.pts.length-1;i++)el('circle',{cx:t.pts[i][0],cy:t.pts[i][1],r:s*0.55,class:'turnpt','vector-effect':'non-scaling-stroke'},svg);
+  for(let i=1;i<t.pts.length-1;i++)if(Math.abs(t.turns[i-1])!==3)el('circle',{cx:t.pts[i][0],cy:t.pts[i][1],r:s*0.55,class:'turnpt','vector-effect':'non-scaling-stroke'},svg);
+  acutes.forEach(a=>{
+    el('circle',{cx:a.p[0],cy:a.p[1],r:s*0.75,class:'acutept','vector-effect':'non-scaling-stroke'},svg);
+    el('text',{x:a.lx,y:a.ly+s*0.4,'text-anchor':'middle','font-size':s*1.15,class:'acutelbl'},svg,'45°');
+  });
   // flag
   const st=t.pts[0],px=st[0]-s*1.1;
   el('circle',{cx:st[0],cy:st[1],r:s*0.5,class:'startdot'},svg);
@@ -405,14 +512,20 @@ function drawInto(svg,t,B){
 
 function rowsFor(t){
   const ev=[{at:0,kind:'flag',title:'דגל התחלה',sub:'יציאה ישר קדימה'}];
-  let cum=0;
-  t.lens.forEach((L,i)=>{cum+=L;if(i<t.lens.length-1)ev.push({at:cum,kind:'turn',title:t.turns[i]===1?'פנייה ימינה':'פנייה שמאלה',sub:`סוף צלע ${i+1} (${L} צעדים)`})});
+  let cum=0;const n=t.lens.length;
+  t.lens.forEach((L,i)=>{cum+=L;if(i<n-1){
+    const v=t.turns[i],side=v>0?'ימינה':'שמאלה',sharp=Math.abs(v)===3;
+    ev.push({at:cum,kind:sharp?'turn acute':'turn',title:sharp?`פנייה חדה ${side} (זווית 45°)`:`פנייה ${side}`,sub:`סוף צלע ${i+1} (${L} צעדים)`});
+  }});
+  const S=settings(),cr=t.cross||[];
+  cr.forEach((c,ci)=>crossInfo(t,c,S).hits.forEach(h=>ev.push({at:h.cum,kind:'cross',title:'עקבות חוצות'+(cr.length>1?` ${ci+1}`:''),sub:`חוצים את צלע ${h.leg+1}, ${h.off} צעדים מתחילתה`})));
   t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:`חפץ ${i+1}`,sub:o.cum===t.steps?'סוף המסלול':`צלע ${o.leg+1}, ${o.off} צעדים מתחילת הצלע`}));
-  ev.sort((a,b)=>a.at-b.at||(a.kind==='obj'?1:-1));
+  ev.sort((a,b)=>a.at-b.at||(a.kind==='obj'?1:b.kind==='obj'?-1:0));
   let prev=0;
   return ev.map(e=>{const d=e.at-prev;prev=e.at;return`<tr><td class="n">${e.at}</td><td><div class="ev"><span class="pip ${e.kind}"></span><div>${e.title}<small>${e.sub}</small></div></div></td><td class="n">${e.kind==='flag'?'–':'+'+d}</td></tr>`}).join('');
 }
 
+/* ---------- random view ---------- */
 const codeOf=t=>`${t.level}-${t.seed}`+(t.count!==3?`-${t.count}`:'');
 function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
@@ -423,19 +536,26 @@ function renderRecent(){const box=$('recent');box.innerHTML='';recents().forEach
 function setCount(c){objCount=Math.min(OBJ_MAX,Math.max(OBJ_MIN,c));$('objcount').textContent=objCount;$('objminus').disabled=objCount<=OBJ_MIN;$('objplus').disabled=objCount>=(current?current.maxFit:OBJ_MAX)}
 function note(text){$('msg').textContent=text||'';$('msg').hidden=!text}
 function setLevel(lv){level=lv;document.querySelectorAll('#levels button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lv===lv)))}
+function extrasText(t){
+  const parts=[];
+  const sharp=t.turns.filter(v=>Math.abs(v)===3).length;
+  if(sharp)parts.push(sharp===1?'פנייה חדה':`${sharp} פניות חדות`);
+  if(t.cross&&t.cross.length)parts.push(t.cross.length===1?'עקבות חוצות (קו מקווקו)':`${t.cross.length} עקבות חוצות (קו מקווקו)`);
+  return parts.map(p=>' · '+p).join('');
+}
 
 function render(t){
   current=t;
   $('svgbox').replaceChildren(draw(t));
   $('rows').innerHTML=rowsFor(t);
   $('code').textContent=codeOf(t);
-  $('summary').textContent=`${LEVELS[t.level].name} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`;
+  $('summary').textContent=`${LEVELS[t.level].name} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`+extrasText(t);
   pushRecent(codeOf(t));
 }
 
 function show(code){
   if(/^\s*M\s*-/i.test(code||'')){loadManual(code);return}
-  const m=/^\s*(IGP\s*[123]|FH\s*1)\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
+  const m=/^\s*(IGP\s*[123]|FH\s*[12])\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
   if(!m){note('הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5');return}
   const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:3);
   const t=generate(lv,seed,objCount);
@@ -450,63 +570,80 @@ function changeCount(d){setCount(objCount+d);if(current)show(`${current.level}-$
 $('objminus').addEventListener('click',()=>changeCount(-1));
 $('objplus').addEventListener('click',()=>changeCount(1));
 
-document.querySelectorAll('#levels button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);if(mode==='random')fresh();else{if(!ed.corners.length)ed.area=LEVEL_AREA[level];renderEditor()}}));
+document.querySelectorAll('#levels button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);if(mode==='random')fresh();else{if(!ed.start)ed.area=LEVEL_AREA[level];renderEditor()}}));
 
 /* ---------- manual drawing ---------- */
-// the drawing area is a square of `ed.area` steps; it grows/shrinks in these sizes
+// The track is stored as a start point plus legs {h: heading 0–7, L: steps}, so every leg stays straight.
+// Cross tracks are straight segments [x1,y1,x2,y2]. The area is a square of `ed.area` steps.
 const AREAS=[200,300,400,500,600,800,1000];
-const LEVEL_AREA={IGP1:300,IGP2:300,IGP3:400,FH1:500};
+const LEVEL_AREA={IGP1:300,IGP2:300,IGP3:400,FH1:500,FH2:600};
 const EBox=()=>{const A=ed.area,p=A*0.04;return{x0:-p,y0:-p,x1:A+p,y1:A+p,pad:p,s:A*0.03,scale:false}};
 // map units per screen pixel, so touch targets stay finger-sized at any zoom
 const upp=()=>{const w=edSvg.getBoundingClientRect().width;const b=EBox();return w>0?(b.x1-b.x0)/w:1};
 const tol=(px,minU)=>Math.max(px*upp(),minU||0);
-let mode='random', tool='draw', ed={corners:[],objs:[],area:300}, live=null, axis=null, dragging=false, history=[];
-let cornerDrag=null; // {i, base corners, objects pinned to (leg, offset)}
-const snap10=v=>Math.round(v/10)*10;
-const headOf=(a,b)=>b[1]<a[1]?0:b[0]>a[0]?1:b[1]>a[1]?2:3;
+const emptyEd=A=>({start:null,legs:[],objs:[],cross:[],area:A});
+let mode='random', tool='draw', ed=emptyEd(300), live=null, lineH=null, dragging=false, history=[];
+let cornerDrag=null, crossDraft=null;
+const snap10=v=>Math.round(v/10)*10, snap5=v=>Math.round(v/5)*5;
 
-// turn corner points + object positions (steps from the flag) into the same track shape the generator uses
-function trackFrom(corners,objCums){
-  const pts=corners.map(p=>p.slice()),lens=[],heads=[],turns=[];
-  for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];lens.push(Math.abs(b[0]-a[0])+Math.abs(b[1]-a[1]));heads.push(headOf(a,b))}
-  for(let i=1;i<heads.length;i++)turns.push((heads[i]-heads[i-1]+4)%4===1?1:-1);
+function trackFrom(start,legs,objCums,cross){
+  if(!start)return{pts:[],lens:[],heads:[],turns:[],steps:0,objs:[],cross:cross.slice(),level,manual:true};
+  const pts=cornersOf(start,legs),lens=legs.map(l=>l.L),heads=legs.map(l=>l.h),turns=[];
+  for(let i=1;i<heads.length;i++)turns.push(norm8(heads[i]-heads[i-1]));
   const steps=lens.reduce((a,b)=>a+b,0);
   const objs=[...new Set(objCums)].filter(c=>c>0&&c<=steps).sort((a,b)=>a-b).map(c=>{
     let st=0;for(let i=0;i<lens.length;i++){if(c<=st+lens[i])return{leg:i,off:c-st,cum:c};st+=lens[i]}
   });
-  return{pts,lens,heads,turns,steps,objs,level,manual:true};
+  return{pts,lens,heads,turns,steps,objs,cross:cross.slice(),level,manual:true};
 }
 function edTrack(){
-  const c=ed.corners.slice(),last=c[c.length-1];
-  if(live&&last&&(live[0]!==last[0]||live[1]!==last[1]))c.push(live);
-  return trackFrom(c,ed.objs);
+  const legs=live?ed.legs.concat([live]):ed.legs;
+  const cross=crossDraft&&crossDraft.b?ed.cross.concat([Object.assign([...crossDraft.a,...crossDraft.b],{draft:true})]):ed.cross;
+  return trackFrom(ed.start,legs,ed.objs,cross);
 }
+const edCorners=()=>ed.start?cornersOf(ed.start,ed.legs):[];
+const endPt=()=>{const c=edCorners();return c[c.length-1]};
+const lastH=()=>ed.legs.length?ed.legs[ed.legs.length-1].h:null;
+function edPoints(){const p=edCorners();ed.cross.forEach(c=>p.push([c[0],c[1]],[c[2],c[3]]));return p}
+const sharpIdx=()=>ed.legs.findIndex((l,k)=>k>0&&Math.abs(norm8(l.h-ed.legs[k-1].h))===3);
 
 const edSvg=el('svg',{class:'editor',role:'img','aria-label':'מפה לציור מסלול'});
-
 function bbox(cs){const xs=cs.map(q=>q[0]),ys=cs.map(q=>q[1]);return{x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys)}}
 // smallest area that holds the track with a margin (never below the level's usual size)
-function areaFor(cs){
+function areaFor(pts){
   let need=LEVEL_AREA[level]||400;
-  if(cs.length){const b=bbox(cs);need=Math.max(need,Math.max(b.x1-b.x0,b.y1-b.y0)+60)}
+  if(pts.length){const b=bbox(pts);need=Math.max(need,Math.max(b.x1-b.x0,b.y1-b.y0)+60)}
   return AREAS.find(a=>a>=need)||AREAS[AREAS.length-1];
 }
-// change the area size and re-centre the track inside it
+// change the area size and re-centre everything inside it
 function setArea(A){
-  ed.area=A;
-  if(ed.corners.length){const b=bbox(ed.corners);const ox=snap10((A-(b.x1-b.x0))/2-b.x0),oy=snap10((A-(b.y1-b.y0))/2-b.y0);ed.corners=ed.corners.map(q=>[q[0]+ox,q[1]+oy])}
+  ed.area=A;const pts=edPoints();if(!pts.length)return;
+  const b=bbox(pts),ox=snap10((A-(b.x1-b.x0))/2-b.x0),oy=snap10((A-(b.y1-b.y0))/2-b.y0);
+  if(ed.start)ed.start=[ed.start[0]+ox,ed.start[1]+oy];
+  ed.cross=ed.cross.map(c=>[c[0]+ox,c[1]+oy,c[2]+ox,c[3]+oy]);
 }
+function fitIfNeeded(){const pts=edPoints();if(!pts.length)return;const b=bbox(pts);if(b.x0<0||b.y0<0||b.x1>ed.area||b.y1>ed.area)setArea(areaFor(pts))}
 const edG=el('g',{},edSvg);
 $('edbox').appendChild(edSvg);
 
 function setHint(text,flash){$('hint').textContent=text;$('hint').classList.toggle('flash',!!flash)}
 function defaultHint(){
-  if(tool==='obj')return ed.corners.length>1?'גע על קו המסלול כדי להניח חפץ. נגיעה בחפץ קיים מסירה אותו.':'קודם צייר מסלול, ואז אפשר להניח עליו חפצים.';
-  if(ed.corners.length>2)return 'גרור את סוף המסלול כדי להמשיך, או גרור נקודת פנייה כדי להאריך או לקצר את הצלעות שלידה.';
-  return ed.corners.length?'גרור מהנקודה המסומנת בסוף המסלול כדי להמשיך. שינוי כיוון יוצר פנייה, וגרירה אחורה מקצרת את הצלע.':'גע במפה כדי להציב את הדגל, ובלי להרים את האצבע גרור כדי לצייר את הצלע הראשונה.';
+  if(tool==='obj')return ed.legs.length?'גע על קו המסלול כדי להניח חפץ. נגיעה בחפץ קיים מסירה אותו.':'קודם צייר מסלול, ואז אפשר להניח עליו חפצים.';
+  if(tool==='acute')return ed.legs.length>1?'גע בנקודת פנייה כדי להפוך אותה לפנייה חדה בזווית 45°. נגיעה נוספת מחזירה אותה ל-90°.':'קודם צייר מסלול עם פניות, ואז בחר איזו פנייה תהיה חדה.';
+  if(tool==='cross')return 'גרור על המפה כדי לשרטט עקבות חוצות בקו ישר. נגיעה בעקבות קיימים מוחקת אותם.';
+  if(ed.legs.length>1)return 'גרור את סוף המסלול כדי להמשיך, או גרור נקודת פנייה כדי להאריך או לקצר את הצלעות שלידה.';
+  return ed.start?'גרור מהנקודה המסומנת בסוף המסלול כדי להמשיך. שינוי כיוון יוצר פנייה, וגרירה אחורה מקצרת את הצלע.':'גע במפה כדי להציב את הדגל, ובלי להרים את האצבע גרור כדי לצייר את הצלע הראשונה.';
+}
+function syncTools(){
+  // the sharp-turn and cross-track tools belong to FH2 (or to a track that already has them)
+  const extra=!!LEVELS[level].acute||sharpIdx()>=0||ed.cross.length>0;
+  $('toolAcute').hidden=!extra;$('toolCross').hidden=!extra;
+  if(!extra&&(tool==='acute'||tool==='cross'))tool='draw';
+  document.querySelectorAll('#tool button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tool)));
 }
 
 function renderEditor(){
+  syncTools();
   const t=edTrack();
   const EB=EBox(),AREA=ed.area,ES=EB.s;
   EB.minor=10/upp()>=7;
@@ -516,16 +653,17 @@ function renderEditor(){
   edG.replaceChildren();
   drawInto(edG,t,EB);
   el('rect',{x:0,y:0,width:AREA,height:AREA,class:'areaedge','vector-effect':'non-scaling-stroke'},edG);
-  if(!ed.corners.length)el('text',{x:AREA/2,y:AREA/2,'text-anchor':'middle','font-size':ES*1.4,class:'mut'},edG,'גע כאן כדי להציב את הדגל');
-  else if(tool==='draw'){
-    const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG);
-    for(let i=1;i<ed.corners.length-1;i++){const c=ed.corners[i];el('circle',{cx:c[0],cy:c[1],r:ES*(cornerDrag&&cornerDrag.i===i?1.3:1),class:'endh','vector-effect':'non-scaling-stroke'},edG)}
+  if(!ed.start)el('text',{x:AREA/2,y:AREA/2,'text-anchor':'middle','font-size':ES*1.4,class:'mut'},edG,'גע כאן כדי להציב את הדגל');
+  else if(tool==='draw'||tool==='acute'){
+    const cs=edCorners();
+    if(tool==='draw'){const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG)}
+    for(let i=1;i<cs.length-1;i++)el('circle',{cx:cs[i][0],cy:cs[i][1],r:ES*(cornerDrag&&cornerDrag.i===i?1.3:1),class:'endh','vector-effect':'non-scaling-stroke'},edG);
   }
-  edSvg.classList.toggle('objmode',tool==='obj');
-  if(!dragging)setHint(defaultHint());
+  edSvg.classList.toggle('objmode',tool==='obj'||tool==='acute');
+  if(!dragging&&!cornerDrag&&!crossDraft)setHint(defaultHint());
   // side panels
   const n=t.lens.length;
-  $('mSummary').textContent=n?`${t.steps} צעדים · ${n} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`:'עדיין אין מסלול.';
+  $('mSummary').textContent=n?`${t.steps} צעדים · ${n} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`+extrasText(t):'עדיין אין מסלול.';
   $('checks').innerHTML=checksFor(t).map(c=>`<li class="${c[0]}">${c[1]}</li>`).join('');
   $('mRows').innerHTML=t.pts.length?rowsFor(t):'';
   $('mCode').textContent=n?manualCode(t):'–';
@@ -536,6 +674,17 @@ function checksFor(t){
   const L=LEVELS[level],S=settings(),n=t.lens.length,out=[];
   out.push([t.steps===L.steps?'ok':'bad',`אורך: ${t.steps} מתוך ${L.steps} צעדים (${L.name})`]);
   out.push([n===L.legs?'ok':'bad',`צלעות: ${n} מתוך ${L.legs} (${L.legs-1} פניות)`]);
+  const sharp=t.turns.filter(v=>Math.abs(v)===3).length,needSharp=L.acute||0;
+  if(needSharp||sharp)out.push([sharp===needSharp?'ok':'bad',
+    !needSharp?'ברמה הזו אין פנייה חדה':sharp===needSharp?'יש פנייה חדה אחת (זווית 45°)':sharp?`${sharp} פניות חדות (צריך אחת בלבד)`:'אין פנייה חדה (צריך אחת)']);
+  const cr=t.cross||[];
+  if(L.cross&&!cr.length)out.push(['bad','אין עקבות חוצות (צריך לפחות אחד)']);
+  if(!L.cross&&cr.length)out.push(['bad','ברמה הזו אין עקבות חוצות']);
+  cr.forEach((c,ci)=>{
+    const info=crossInfo(t,c,S),name=cr.length>1?`עקבות חוצות ${ci+1}`:'עקבות חוצות';
+    if(info.probs.length)info.probs.forEach(p=>out.push(['bad',`${name}: ${p}`]));
+    else out.push(['ok',`${name}: חוצים ${info.hits.length} צלעות, רחוק מספיק מהפניות`]);
+  });
   out.push([t.objs.some(o=>o.cum===t.steps)?'ok':'bad',t.objs.some(o=>o.cum===t.steps)?'יש חפץ בסוף המסלול':'אין חפץ בסוף המסלול']);
   out.push(['info',`${t.objs.length} חפצים על המסלול`]);
   const bad=[];
@@ -547,29 +696,32 @@ function checksFor(t){
   });
   for(let i=1;i<t.objs.length;i++){const d=t.objs[i].cum-t.objs[i-1].cum;if(d<S.gap)bad.push(`חפצים ${i} ו-${i+1}: ${d} צעדים ביניהם (מינימום ${S.gap})`)}
   const segs=t.lens.map((_,i)=>[t.pts[i],t.pts[i+1]]);
-  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=segDist(segs[i],segs[j]);if(d<S.sep)bad.push(d===0?`צלעות ${i+1} ו-${j+1} נחתכות`:`צלעות ${i+1} ו-${j+1} קרובות מדי (${Math.round(d)} צעדים, מינימום ${S.sep})`)}
+  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=segDist(segs[i],segs[j]);if(d<S.sep)bad.push(d<0.5?`צלעות ${i+1} ו-${j+1} נחתכות`:`צלעות ${i+1} ו-${j+1} קרובות מדי (${Math.round(d)} צעדים, מינימום ${S.sep})`)}
   if(bad.length)bad.forEach(b=>out.push(['bad',b]));else out.push(['ok','מרחקי החפצים והצלעות תקינים']);
   return out;
 }
 
-// code: M-<dir><len>...-<object positions>, e.g. M-U120R80U100-90.200.300
+// code: M-<legs>-<objects>-X<cross tracks>, e.g. M-U120R80UR100-90.200.300-X-20,40,180,40
+// legs are heading letters + steps; cross tracks are x1,y1,x2,y2 relative to the flag
 function manualCode(t){
-  const legs=t.lens.map((L,i)=>'URDL'[t.heads[i]]+L).join('');
-  return 'M-'+legs+(t.objs.length?'-'+t.objs.map(o=>o.cum).join('.'):'');
+  const s=t.pts[0];
+  let c='M-'+t.lens.map((L,i)=>HEAD_CODE[t.heads[i]]+L).join('')+(t.objs.length?'-'+t.objs.map(o=>o.cum).join('.'):'');
+  const cr=(t.cross||[]).filter(x=>!x.draft);
+  if(cr.length)c+='-X'+cr.map(x=>[x[0]-s[0],x[1]-s[1],x[2]-s[0],x[3]-s[1]].map(v=>Math.round(v)).join(',')).join(';');
+  return c;
 }
 function loadManual(code){
-  const m=/^\s*M\s*-\s*((?:[URDL]\d{1,4})+)\s*(?:-\s*(\d+(?:\.\d+)*))?\s*$/i.exec(code||'');
+  const m=/^\s*M\s*-\s*((?:(?:UR|DR|DL|UL|U|R|D|L)\d{1,4})+)\s*(?:-\s*(\d+(?:\.\d+)*))?\s*(?:-\s*X\s*(-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*))?\s*$/i.exec(code||'');
   if(!m){note('קוד של מסלול ידני צריך להיראות כך: M-U120R80U100-90.200.300');return}
-  let p=[0,0];const c=[[0,0]];
-  m[1].toUpperCase().match(/[URDL]\d+/g).forEach(s=>{const d=DIRS['URDL'.indexOf(s[0])],L=+s.slice(1);p=[p[0]+d[0]*L,p[1]+d[1]*L];c.push(p.slice())});
+  const legs=m[1].toUpperCase().match(/(UR|DR|DL|UL|U|R|D|L)\d+/g).map(s=>{const k=s.match(/^[A-Z]+/)[0];return{h:HEAD_CODE.indexOf(k),L:+s.slice(k.length)}});
   snapshot();
-  ed={corners:c,objs:m[2]?m[2].split('.').map(Number):[],area:400};
-  live=null;axis=null;
+  ed={start:[0,0],legs,objs:m[2]?m[2].split('.').map(Number):[],cross:m[3]?m[3].split(';').map(s=>s.split(',').map(Number)):[],area:400};
+  live=null;lineH=null;
   const t=edTrack(),fit=Object.keys(LEVELS).find(k=>LEVELS[k].steps===t.steps&&LEVELS[k].legs===t.lens.length);
   if(fit)setLevel(fit);
-  setArea(areaFor(ed.corners));
+  setArea(areaFor(edPoints()));
   setMode('manual');saveDraft();renderEditor();
-  const b=bbox(ed.corners);
+  const b=bbox(edPoints());
   note(Math.max(b.x1-b.x0,b.y1-b.y0)>ed.area?'המסלול גדול מהמפה, ולכן חלק ממנו מחוץ לשטח הציור.':'');
 }
 
@@ -581,21 +733,24 @@ function toPt(e){
   return{x:Math.min(ed.area,Math.max(0,p.x)),y:Math.min(ed.area,Math.max(0,p.y))};
 }
 
-// extend the track toward the finger: legs follow one axis; a sideways move commits a 90° turn
+// Extend the track toward the finger. The live leg follows one line; a sideways move commits a 90° turn.
+// Moving back along the previous leg's line re-opens that leg for editing.
 function extend(q,depth=0){
-  const cs=ed.corners,c=cs[cs.length-1],dx=q.x-c[0],dy=q.y-c[1];
-  const prevAx=cs.length>=2?(cs[cs.length-2][1]===c[1]?'h':'v'):null;
-  if(!axis){
-    if(Math.max(Math.abs(dx),Math.abs(dy))<tol(10,6)){live=null;return}
-    const ax=Math.abs(dx)>=Math.abs(dy)?'h':'v';
-    if(ax===prevAx&&depth<6){cs.pop();live=null;axis=ax;return extend(q,depth+1)} // back on the previous leg: edit it
-    axis=ax;
+  const c=endPt(),dl=[q.x-c[0],q.y-c[1]],prev=lastH();
+  if(lineH===null){
+    if(Math.hypot(dl[0],dl[1])<tol(10,6)){live=null;return}
+    const cands=prev===null?[0,2]:[prev,(prev+2)%8];
+    let best=cands[0];cands.forEach(h=>{if(Math.abs(dot(dl,DIRS[h]))>Math.abs(dot(dl,DIRS[best])))best=h});
+    if(prev!==null&&best===prev&&depth<6){ed.legs.pop();live=null;lineH=prev;return extend(q,depth+1)}
+    lineH=best;
   }
-  const alongV=axis==='h'?dx:dy,perp=axis==='h'?dy:dx,len=snap10(alongV);
-  live=axis==='h'?[c[0]+len,c[1]]:[c[0],c[1]+len];
+  const u=DIRS[lineH],len=snap10(dot(dl,u)),perp=crs(u,dl);
+  const h=len>=0?lineH:(lineH+4)%8,before=lastH();
+  const okTurn=before===null||[2,3].includes(Math.abs(norm8(h-before)));
+  live=len!==0&&okTurn?{h,L:Math.abs(len)}:null;
   if(Math.abs(perp)>=tol(18,12)&&depth<6){
-    if(Math.abs(len)>=10){cs.push(live);live=null;axis=null;return extend(q,depth+1)}
-    axis=null;live=null;return extend(q,depth+1);
+    if(live&&live.L>=10){ed.legs.push(live);live=null;lineH=null;return extend(q,depth+1)}
+    lineH=null;live=null;return extend(q,depth+1);
   }
 }
 
@@ -618,72 +773,118 @@ function placeObjAt(p){
   saveDraft();renderEditor();
 }
 
+function nearestCorner(p){
+  const cs=edCorners();let gi=-1,gd=tol(26,18);
+  for(let i=1;i<cs.length-1;i++){const d=Math.hypot(p.x-cs[i][0],p.y-cs[i][1]);if(d<gd){gd=d;gi=i}}
+  return gi;
+}
+
+// Turn a 90° turn into the sharp 45° one (or back). The rest of the track swings around that point.
+function toggleAcute(p){
+  const i=nearestCorner(p);
+  if(i<0){setHint('גע באחת מנקודות הפנייה המסומנות.',true);return}
+  const d=norm8(ed.legs[i].h-ed.legs[i-1].h),sg=Math.sign(d);
+  if(Math.abs(d)===2){
+    if(sharpIdx()>=0){setHint('במסלול יש כבר פנייה חדה. גע בה כדי להחזיר אותה ל-90°, ואז בחר פנייה אחרת.',true);return}
+    snapshot();for(let k=i;k<ed.legs.length;k++)ed.legs[k].h=(ed.legs[k].h+sg+8)%8;
+  }else if(Math.abs(d)===3){
+    snapshot();for(let k=i;k<ed.legs.length;k++)ed.legs[k].h=(ed.legs[k].h-sg+8)%8;
+  }else return;
+  fitIfNeeded();saveDraft();renderEditor();
+}
+
+// Move turn point i. Each neighbouring corner slides along its own outer leg so every leg keeps its direction;
+// the legs on both sides get longer or shorter (in 10-step units).
+function moveCorner(q){
+  const {i,base,pins}=cornerDrag,legs=base.legs,n=legs.length;
+  const bc=cornersOf(base.start,legs),d=[q.x-bc[i][0],q.y-bc[i][1]];
+  const perp=u=>[-u[1],u[0]];
+  const u1=DIRS[legs[i-1].h],u2=DIRS[legs[i].h];
+  const u0=i>=2?DIRS[legs[i-2].h]:perp(u1),u3=i+1<n?DIRS[legs[i+1].h]:perp(u2);
+  const solve=(a,b,v)=>{const den=crs(a,b);return Math.abs(den)<1e-9?[0,dot(v,b)]:[crs(v,b)/den,crs(a,v)/den]};
+  const attempt=dv=>{
+    const [t0,q1]=solve(u0,u1,dv),[r3,w2]=solve(u3,u2,dv);
+    const T=snap10(t0),Q=snap10(q1),Rr=snap10(r3),W=snap10(w2);
+    const nl=legs.map(l=>({h:l.h,L:l.L}));let st=base.start.slice();
+    if(i>=2)nl[i-2].L+=T;else st=[st[0]+u0[0]*T,st[1]+u0[1]*T];
+    nl[i-1].L+=Q;nl[i].L-=W;if(i+1<n)nl[i+1].L-=Rr;
+    return nl.every(l=>l.L>=10)?{start:st,legs:nl}:null;
+  };
+  const [t0,q1]=solve(u0,u1,d);
+  const r=attempt(d)||attempt([u1[0]*q1,u1[1]*q1])||attempt([u0[0]*t0,u0[1]*t0]);
+  if(!r)return;
+  ed.start=r.start;ed.legs=r.legs;
+  // objects stay on their leg at the same distance from its start
+  const lens=r.legs.map(l=>l.L),starts=[0];lens.forEach((L,k)=>starts.push(starts[k]+L));
+  ed.objs=pins.map(p=>p.end?starts[lens.length]:starts[p.leg]+Math.min(p.off,lens[p.leg]));
+}
+
+function crossDraftTo(p){
+  const a=crossDraft.a,dl=[p.x-a[0],p.y-a[1]];
+  if(Math.hypot(dl[0],dl[1])<tol(10,6)){crossDraft.b=null;return}
+  const k=((Math.round(Math.atan2(dl[0],-dl[1])/(Math.PI/4))%8)+8)%8,u=DIRS[k],len=snap10(dot(dl,u));
+  crossDraft.b=len>=10?[Math.round(a[0]+u[0]*len),Math.round(a[1]+u[1]*len)]:null;
+}
+
 edSvg.addEventListener('pointerdown',e=>{
   e.preventDefault();
   const p=toPt(e);
   if(tool==='obj'){placeObjAt(p);return}
-  const cs=ed.corners;
-  if(!cs.length){snapshot();ed.corners=[[snap10(p.x),snap10(p.y)]];}
-  else{const end=cs[cs.length-1];
+  if(tool==='acute'){toggleAcute(p);return}
+  if(tool==='cross'){
+    crossDraft={a:[snap5(p.x),snap5(p.y)],b:null,p};
+    try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
+    setHint('גורר… עקבות חוצות נמשכים בקו ישר.');renderEditor();return;
+  }
+  if(!ed.start){snapshot();ed.start=[snap10(p.x),snap10(p.y)];}
+  else{const end=endPt();
     if(Math.hypot(p.x-end[0],p.y-end[1])>tol(28,20)){
-      // grab a turn point instead?
-      let gi=-1,gd=tol(26,18);
-      for(let i=1;i<cs.length-1;i++){const d=Math.hypot(p.x-cs[i][0],p.y-cs[i][1]);if(d<gd){gd=d;gi=i}}
+      const gi=nearestCorner(p);
       if(gi<0){setHint('כדי לערוך, גרור את סוף המסלול או אחת מנקודות הפנייה המסומנות.',true);return}
       snapshot();
       const t=edTrack();
-      cornerDrag={i:gi,base:cs.map(c=>c.slice()),pins:t.objs.map(o=>({leg:o.leg,off:o.off,end:o.cum===t.steps}))};
+      cornerDrag={i:gi,base:JSON.parse(JSON.stringify({start:ed.start,legs:ed.legs})),pins:t.objs.map(o=>({leg:o.leg,off:o.off,end:o.cum===t.steps}))};
       try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
       setHint('גורר נקודת פנייה… הצלעות שלידה מתארכות או מתקצרות.');
       renderEditor();return;
     }
     snapshot();}
-  dragging=true;axis=null;live=null;
+  dragging=true;lineH=null;live=null;
   try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
   setHint('גורר… שנה כיוון כדי ליצור פנייה.');
   renderEditor();
 });
-// move turn point i; the neighbouring corners follow on one axis so every leg stays straight
-function moveCorner(q){
-  const {i,base,pins}=cornerDrag,nx=snap10(q.x),ny=snap10(q.y);
-  const lensOf=c=>c.slice(1).map((b,k)=>Math.abs(b[0]-c[k][0])+Math.abs(b[1]-c[k][1]));
-  const horiz=(a,b)=>a[1]===b[1];
-  const h1=horiz(base[i-1],base[i]),h2=horiz(base[i],base[i+1]);
-  let c=base.map(p=>p.slice());
-  const apply=(axisIdx,v)=>{
-    const t=c.map(p=>p.slice());t[i][axisIdx]=v;
-    // the leg before/after keeps its fixed coordinate shared with this corner
-    if(axisIdx===0){if(!h1)t[i-1][0]=v;if(!h2)t[i+1][0]=v}
-    else{if(h1)t[i-1][1]=v;if(h2)t[i+1][1]=v}
-    return lensOf(t).every(L=>L>=10)?t:c;
-  };
-  c=apply(0,nx);c=apply(1,ny);
-  ed.corners=c;
-  // objects stay on their leg at the same distance from its start
-  const lens=lensOf(c),starts=[0];lens.forEach((L,k)=>starts.push(starts[k]+L));
-  ed.objs=pins.map(p=>p.end?starts[lens.length]:starts[p.leg]+Math.min(p.off,lens[p.leg]));
-}
 edSvg.addEventListener('pointermove',e=>{
+  if(crossDraft){e.preventDefault();crossDraftTo(toPt(e));renderEditor();return}
   if(cornerDrag){e.preventDefault();moveCorner(toPt(e));renderEditor();return}
   if(!dragging)return;e.preventDefault();extend(toPt(e));renderEditor()});
 function endDrag(){
+  if(crossDraft){
+    const cd=crossDraft;crossDraft=null;
+    if(cd.b){snapshot();ed.cross.push([...cd.a,...cd.b]);fitIfNeeded();saveDraft()}
+    else{ // a tap: delete the cross track under the finger
+      const i=ed.cross.findIndex(c=>ptSeg([cd.p.x,cd.p.y],[c[0],c[1]],[c[2],c[3]])<tol(22,12));
+      if(i>=0){snapshot();ed.cross.splice(i,1);saveDraft()}
+    }
+    renderEditor();return;
+  }
   if(cornerDrag){cornerDrag=null;saveDraft();renderEditor();return}
   if(!dragging)return;
-  const cs=ed.corners,last=cs[cs.length-1];
-  if(live&&(live[0]!==last[0]||live[1]!==last[1]))cs.push(live);
-  live=null;axis=null;dragging=false;saveDraft();renderEditor();
+  if(live)ed.legs.push(live);
+  live=null;lineH=null;dragging=false;saveDraft();renderEditor();
 }
 edSvg.addEventListener('pointerup',endDrag);
 edSvg.addEventListener('pointercancel',endDrag);
 
-function setTool(tl){tool=tl;document.querySelectorAll('#tool button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tl)));renderEditor()}
+function setTool(tl){tool=tl;renderEditor()}
 document.querySelectorAll('#tool button').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 $('undo').addEventListener('click',()=>{if(!history.length){setHint('אין פעולה לבטל.',true);return}ed=JSON.parse(history.pop());saveDraft();renderEditor()});
-$('clear').addEventListener('click',()=>{if(!ed.corners.length)return;snapshot();ed={corners:[],objs:[],area:LEVEL_AREA[level]};saveDraft();setTool('draw')});
+$('clear').addEventListener('click',()=>{if(!ed.start&&!ed.cross.length)return;snapshot();ed=emptyEd(LEVEL_AREA[level]);saveDraft();setTool('draw')});
 function zoom(dir){
   const i=AREAS.indexOf(ed.area),A=AREAS[Math.max(0,Math.min(AREAS.length-1,(i<0?2:i)+dir))];
   if(A===ed.area)return;
-  if(dir<0&&ed.corners.length){const b=bbox(ed.corners);if(Math.max(b.x1-b.x0,b.y1-b.y0)+20>A){setHint('המסלול לא נכנס בשטח קטן יותר.',true);return}}
+  const pts=edPoints();
+  if(dir<0&&pts.length){const b=bbox(pts);if(Math.max(b.x1-b.x0,b.y1-b.y0)+20>A){setHint('המסלול לא נכנס בשטח קטן יותר.',true);return}}
   snapshot();setArea(A);saveDraft();renderEditor();
 }
 $('zoomOut').addEventListener('click',()=>zoom(-1));
@@ -713,10 +914,18 @@ $('copybtn').addEventListener('click',()=>{
   const fallback=()=>{$('codein').value=c;$('codein').select();note('הקוד מסומן בתיבה, אפשר להעתיק')};
   try{navigator.clipboard.writeText(c).then(done,fallback)}catch(e){fallback()}
 });
-['sBefore','sAfter','sStart','sGap','sLeg','sSep'].forEach(id=>$(id).addEventListener('change',()=>{if(current)show(codeOf(current));if(mode==='manual')renderEditor()}));
+['sBefore','sAfter','sStart','sGap','sLeg','sSep','sCross'].forEach(id=>$(id).addEventListener('change',()=>{if(current)show(codeOf(current));if(mode==='manual')renderEditor()}));
 
 renderRecent();
-try{const d=JSON.parse(load('trk-manual')||'null');if(d&&Array.isArray(d.corners)&&Array.isArray(d.objs)){ed=d;if(!AREAS.includes(ed.area)){ed.area=400;setArea(areaFor(ed.corners))}}}catch(e){}
+// restore the drawing in progress (older drafts stored corner points)
+try{
+  const d=JSON.parse(load('trk-manual')||'null');
+  if(d&&Array.isArray(d.legs))ed={start:d.start||null,legs:d.legs,objs:d.objs||[],cross:d.cross||[],area:AREAS.includes(d.area)?d.area:400};
+  else if(d&&Array.isArray(d.corners)){
+    const c=d.corners;ed=emptyEd(AREAS.includes(d.area)?d.area:400);ed.objs=d.objs||[];
+    if(c.length){ed.start=c[0].slice();for(let i=1;i<c.length;i++){const dx=c[i][0]-c[i-1][0],dy=c[i][1]-c[i-1][1];ed.legs.push({h:((Math.round(Math.atan2(dx,-dy)/(Math.PI/4))%8)+8)%8,L:Math.round(Math.hypot(dx,dy))})}}
+  }
+}catch(e){}
 show('IGP2-48213');
 if(load('trk-mode')==='manual')setMode('manual');
 })();
