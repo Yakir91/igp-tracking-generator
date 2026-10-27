@@ -268,7 +268,7 @@ const LEVELS={
   IGP2:{name:'IGP 2',steps:400,legs:3},
   IGP3:{name:'IGP 3',steps:600,legs:5},
   FH1:{name:'FH1',steps:800,legs:5},
-  FH2:{name:'FH2',steps:1200,legs:8,acute:1,cross:1}
+  FH2:{name:'FH2',steps:1200,legs:8,acute:1,cross:1,objs:7}
 };
 // 8 headings, 45° apart, clockwise from "up" (screen y grows downward).
 // A 90° turn changes the heading by 2, the sharp 45° turn by 3.
@@ -526,7 +526,8 @@ function rowsFor(t){
 }
 
 /* ---------- random view ---------- */
-const codeOf=t=>`${t.level}-${t.seed}`+(t.count!==3?`-${t.count}`:'');
+const defObjs=lv=>LEVELS[lv].objs||3; // default number of objects for a level
+const codeOf=t=>`${t.level}-${t.seed}`+(t.count!==defObjs(t.level)?`-${t.count}`:'');
 function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function recents(){try{return JSON.parse(load('trk-recent')||'[]')}catch(e){return[]}}
@@ -557,7 +558,7 @@ function show(code){
   if(/^\s*M\s*-/i.test(code||'')){loadManual(code);return}
   const m=/^\s*(IGP\s*[123]|FH\s*[12])\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
   if(!m){note('הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5');return}
-  const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:3);
+  const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:defObjs(lv));
   const t=generate(lv,seed,objCount);
   if(!t){note('לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.');return}
   render(t);setCount(t.count);
@@ -570,7 +571,7 @@ function changeCount(d){setCount(objCount+d);if(current)show(`${current.level}-$
 $('objminus').addEventListener('click',()=>changeCount(-1));
 $('objplus').addEventListener('click',()=>changeCount(1));
 
-document.querySelectorAll('#levels button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);if(mode==='random')fresh();else{if(!ed.start)ed.area=LEVEL_AREA[level];renderEditor()}}));
+document.querySelectorAll('#levels button').forEach(b=>b.addEventListener('click',()=>{setLevel(b.dataset.lv);if(mode==='random'){setCount(defObjs(level));fresh()}else{if(!ed.start)ed.area=LEVEL_AREA[level];renderEditor()}}));
 
 /* ---------- manual drawing ---------- */
 // The track is stored as a start point plus legs {h: heading 0–7, L: steps}, so every leg stays straight.
