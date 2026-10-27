@@ -32,7 +32,7 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
-.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 header h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,5vw,36px);margin:0;line-height:1.15;text-wrap:balance}
 header p{margin:4px 0 0;color:var(--muted)}
 
@@ -127,64 +127,76 @@ summary{cursor:pointer;font-weight:600}
 .checks li.info::before{content:"•";background:var(--line);color:var(--ink)}
 .mcode{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .mcode .code{overflow-wrap:anywhere;min-width:0;flex:1 1 160px}
+.toprow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+#tabs button{min-width:0;padding:9px 14px}
+.langpick{font:600 15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);cursor:pointer}
 #levels{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 380px;max-width:520px}
 #levels button{min-width:0;padding:10px 4px}
-#tool{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 100%}
-#tool button{min-width:0;padding:10px 6px;line-height:1.2;font-size:15px}
+#tool{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 100%;gap:1px;background:var(--line)}
+#tool button{min-width:0;padding:10px 6px;line-height:1.2;font-size:15px;border:0;background:var(--paper)}
+#tool button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+@media (max-width:560px){#tool{grid-auto-flow:row;grid-template-columns:1fr 1fr}}
 .linkbtn{font:600 14px var(--f-body);background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
 </style>
 </head>
 <body>
 <div class="wrap" dir="rtl">
   <header>
-    <h1>מחולל מסלולי גישוש</h1>
-    <p>מסלול לפי רמה (IGP 1–3, FH1, FH2): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. ב-FH2 יש גם פנייה חדה של 45° ועקבות חוצות. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.</p>
+    <h1 data-i18n="title">מחולל מסלולי גישוש</h1>
+    <p data-i18n="intro">מסלול לפי רמה (IGP 1–3, FH1, FH2): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. ב-FH2 יש גם פנייה חדה של 45° ועקבות חוצות. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.</p>
   </header>
 
-  <div class="seg" id="tabs" role="group" aria-label="סוג מסלול">
-    <button id="tabRandom" data-mode="random" aria-pressed="true">מסלול אקראי</button>
-    <button id="tabManual" data-mode="manual" aria-pressed="false">ציור ידני</button>
+  <div class="toprow">
+    <div class="seg" id="tabs" role="group" aria-label="סוג מסלול" data-i18n-aria="aTabs">
+      <button id="tabRandom" data-mode="random" aria-pressed="true" data-i18n="tabRandom">מסלול אקראי</button>
+      <button id="tabManual" data-mode="manual" aria-pressed="false" data-i18n="tabManual">ציור ידני</button>
+    </div>
+    <select id="lang" class="langpick" aria-label="שפה" data-i18n-aria="aLang">
+      <option value="he">עב</option>
+      <option value="en">EN</option>
+      <option value="de">DE</option>
+    </select>
   </div>
 
   <div class="bar">
-    <div class="seg" id="levels" role="group" aria-label="רמה">
-      <button id="lv1" data-lv="IGP1" aria-pressed="false">IGP 1</button>
-      <button id="lv2" data-lv="IGP2" aria-pressed="true">IGP 2</button>
+    <div class="seg" id="levels" role="group" aria-label="רמה" data-i18n-aria="aLevels">
+      <button id="lv1" data-lv="IGP1" aria-pressed="true">IGP 1</button>
+      <button id="lv2" data-lv="IGP2" aria-pressed="false">IGP 2</button>
       <button id="lv3" data-lv="IGP3" aria-pressed="false">IGP 3</button>
       <button id="lvfh1" data-lv="FH1" aria-pressed="false">FH1</button>
       <button id="lvfh2" data-lv="FH2" aria-pressed="false">FH2</button>
     </div>
     <span class="bar" id="randomCtl">
-    <div class="stepper" role="group" aria-label="מספר חפצים">
-      <span class="stlbl">חפצים</span>
-      <button id="objminus" aria-label="הסר חפץ">−</button>
+    <div class="stepper" role="group" aria-label="מספר חפצים" data-i18n-aria="aObjs">
+      <span class="stlbl" data-i18n="objLbl">חפצים</span>
+      <button id="objminus" aria-label="הסר חפץ" data-i18n-aria="aObjMinus">−</button>
       <output id="objcount" aria-live="polite">3</output>
-      <button id="objplus" aria-label="הוסף חפץ">+</button>
+      <button id="objplus" aria-label="הוסף חפץ" data-i18n-aria="aObjPlus">+</button>
     </div>
-    <button class="btn" id="gen">מסלול חדש</button>
+    <button class="btn" id="gen" data-i18n="gen">מסלול חדש</button>
     </span>
   </div>
 
   <div class="notice" id="msg" role="status" hidden></div>
 
   <div class="main" id="manualView" hidden>
-    <section class="panel map" aria-label="ציור מסלול">
+    <section class="panel map" aria-label="ציור מסלול" data-i18n-aria="aEditor">
       <div class="edtools">
-        <div class="seg" id="tool" role="group" aria-label="כלי">
-          <button id="toolDraw" data-tool="draw" aria-pressed="true">ציור מסלול</button>
-          <button id="toolObj" data-tool="obj" aria-pressed="false">הנחת חפצים</button>
-          <button id="toolAcute" data-tool="acute" aria-pressed="false" hidden>פנייה חדה</button>
-          <button id="toolCross" data-tool="cross" aria-pressed="false" hidden>עקבות חוצות</button>
+        <div class="seg" id="tool" role="group" aria-label="כלי" data-i18n-aria="aTool">
+          <button id="toolDraw" data-tool="draw" aria-pressed="true" data-i18n="toolDraw">ציור מסלול</button>
+          <button id="toolObj" data-tool="obj" aria-pressed="false" data-i18n="toolObj">הנחת חפצים</button>
+          <button id="toolAcute" data-tool="acute" aria-pressed="false" hidden data-i18n="toolAcute">פנייה חדה</button>
+          <button id="toolCross" data-tool="cross" aria-pressed="false" hidden data-i18n="toolCross">עקבות חוצות</button>
         </div>
         <div class="edbtns">
-          <button class="btn ghost" id="undo">בטל פעולה</button>
-          <button class="btn ghost" id="clear">נקה</button>
+          <button class="btn ghost" id="undo" data-i18n="undo">בטל פעולה</button>
+          <button class="btn ghost" id="clear" data-i18n="clear">נקה</button>
         </div>
-        <div class="stepper" role="group" aria-label="גודל המפה">
-          <span class="stlbl">שטח</span>
-          <button id="zoomOut" aria-label="מפה קטנה יותר (התקרב)">−</button>
+        <div class="stepper" role="group" aria-label="גודל המפה" data-i18n-aria="aArea">
+          <span class="stlbl" data-i18n="areaLbl">שטח</span>
+          <button id="zoomOut" aria-label="מפה קטנה יותר (התקרב)" data-i18n-aria="aZoomOut">−</button>
           <output id="areaOut" aria-live="polite">400</output>
-          <button id="zoomIn" aria-label="מפה גדולה יותר (התרחק)">+</button>
+          <button id="zoomIn" aria-label="מפה גדולה יותר (התרחק)" data-i18n-aria="aZoomIn">+</button>
         </div>
       </div>
       <p class="hint" id="hint" aria-live="polite"></p>
@@ -193,53 +205,53 @@ summary{cursor:pointer;font-weight:600}
 
     <div class="tools">
       <section class="panel log">
-        <h2>בדיקת המסלול</h2>
+        <h2 data-i18n="hCheck">בדיקת המסלול</h2>
         <p class="summary" id="mSummary"></p>
         <ul class="checks" id="checks"></ul>
       </section>
       <section class="panel log">
-        <h2>דף הנחת מסלול</h2>
+        <h2 data-i18n="hSheet">דף הנחת מסלול</h2>
         <table>
-          <thead><tr><th>צעד</th><th>מה עושים</th><th>מהקודם</th></tr></thead>
+          <thead><tr><th data-i18n="thStep">צעד</th><th data-i18n="thWhat">מה עושים</th><th data-i18n="thPrev">מהקודם</th></tr></thead>
           <tbody id="mRows"></tbody>
         </table>
       </section>
       <section class="panel log">
-        <h2>קוד המסלול</h2>
+        <h2 data-i18n="hCode">קוד המסלול</h2>
         <div class="mcode">
           <span class="code" id="mCode" dir="ltr"></span>
-          <button class="btn ghost" id="mCopy">העתק קוד</button>
+          <button class="btn ghost" id="mCopy" data-i18n="copy">העתק קוד</button>
         </div>
-        <p class="note">את הקוד אפשר לשלוח ולטעון בלשונית "מסלול אקראי", בתיבת טעינת מסלול לפי קוד.</p>
+        <p class="note" data-i18n="codeNote">את הקוד אפשר לשלוח ולטעון בלשונית "מסלול אקראי", בתיבת טעינת מסלול לפי קוד.</p>
       </section>
     </div>
   </div>
 
   <div class="main" id="randomView">
-    <section class="panel map" aria-label="מפת המסלול">
+    <section class="panel map" aria-label="מפת המסלול" data-i18n-aria="aMap">
       <div class="maphead">
         <span class="summary" id="summary"></span>
-        <span>קוד: <span class="code" id="code" dir="ltr"></span></span>
-        <button class="linkbtn" id="toManual">ערוך ידנית</button>
+        <span><span data-i18n="codeLbl">קוד:</span> <span class="code" id="code" dir="ltr"></span></span>
+        <button class="linkbtn" id="toManual" data-i18n="toManual">ערוך ידנית</button>
       </div>
       <div id="svgbox"></div>
     </section>
 
     <div class="tools">
       <section class="panel log">
-        <h2>דף הנחת מסלול</h2>
+        <h2 data-i18n="hSheet">דף הנחת מסלול</h2>
         <table>
-          <thead><tr><th>צעד</th><th>מה עושים</th><th>מהקודם</th></tr></thead>
+          <thead><tr><th data-i18n="thStep">צעד</th><th data-i18n="thWhat">מה עושים</th><th data-i18n="thPrev">מהקודם</th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </section>
 
       <section class="panel log">
-        <h2>טעינת מסלול לפי קוד</h2>
+        <h2 data-i18n="hLoad">טעינת מסלול לפי קוד</h2>
         <div class="load">
-          <input id="codein" placeholder="IGP2-48213" aria-label="קוד מסלול">
-          <button class="btn ghost" id="loadbtn">טען</button>
-          <button class="btn ghost" id="copybtn">העתק קוד</button>
+          <input id="codein" placeholder="IGP2-48213" aria-label="קוד מסלול" data-i18n-aria="aCodeIn">
+          <button class="btn ghost" id="loadbtn" data-i18n="loadBtn">טען</button>
+          <button class="btn ghost" id="copybtn" data-i18n="copy">העתק קוד</button>
         </div>
         <div class="recent" id="recent"></div>
       </section>
@@ -247,17 +259,17 @@ summary{cursor:pointer;font-weight:600}
   </div>
 
   <details>
-    <summary>הגדרות מרחקים</summary>
+    <summary data-i18n="settings">הגדרות מרחקים</summary>
     <div class="settings">
-      <label for="sBefore">מינימום צעדים בין חפץ לפנייה שאחריו<input id="sBefore" type="number" min="0" step="5" value="30"></label>
-      <label for="sAfter">מינימום צעדים אחרי פנייה עד חפץ<input id="sAfter" type="number" min="0" step="5" value="30"></label>
-      <label for="sStart">מינימום צעדים מהדגל עד חפץ ראשון<input id="sStart" type="number" min="0" step="5" value="50"></label>
-      <label for="sGap">מינימום צעדים בין חפצים<input id="sGap" type="number" min="10" step="5" value="20"></label>
-      <label for="sLeg">אורך צלע מינימלי<input id="sLeg" type="number" min="40" step="10" value="50"></label>
-      <label for="sSep">מרחק מינימלי בין צלעות לא סמוכות<input id="sSep" type="number" min="10" step="5" value="40"></label>
-      <label for="sCross">מינימום צעדים בין עקבות חוצות לפנייה (FH2)<input id="sCross" type="number" min="0" step="5" value="40"></label>
+      <label for="sBefore"><span data-i18n="sBefore">מינימום צעדים בין חפץ לפנייה שאחריו</span><input id="sBefore" type="number" min="0" step="5" value="30"></label>
+      <label for="sAfter"><span data-i18n="sAfter">מינימום צעדים אחרי פנייה עד חפץ</span><input id="sAfter" type="number" min="0" step="5" value="30"></label>
+      <label for="sStart"><span data-i18n="sStart">מינימום צעדים מהדגל עד חפץ ראשון</span><input id="sStart" type="number" min="0" step="5" value="50"></label>
+      <label for="sGap"><span data-i18n="sGap">מינימום צעדים בין חפצים</span><input id="sGap" type="number" min="10" step="5" value="20"></label>
+      <label for="sLeg"><span data-i18n="sLeg">אורך צלע מינימלי</span><input id="sLeg" type="number" min="40" step="10" value="50"></label>
+      <label for="sSep"><span data-i18n="sSep">מרחק מינימלי בין צלעות לא סמוכות</span><input id="sSep" type="number" min="10" step="5" value="40"></label>
+      <label for="sCross"><span data-i18n="sCross">מינימום צעדים בין עקבות חוצות לפנייה (FH2)</span><input id="sCross" type="number" min="0" step="5" value="40"></label>
     </div>
-    <p class="note">קוד מסלול משחזר את אותו מסלול כל עוד ההגדרות זהות. המפה מצוירת עם כיוון ההתחלה למעלה; קו רשת דק = 10 צעדים, קו עבה = 50 צעדים.</p>
+    <p class="note" data-i18n="setNote">קוד מסלול משחזר את אותו מסלול כל עוד ההגדרות זהות. המפה מצוירת עם כיוון ההתחלה למעלה; קו רשת דק = 10 צעדים, קו עבה = 50 צעדים.</p>
   </details>
 </div>
 
@@ -277,7 +289,226 @@ const R2=Math.SQRT1_2;
 const DIRS=[[0,-1],[R2,-R2],[1,0],[R2,R2],[0,1],[-R2,R2],[-1,0],[-R2,-R2]];
 const HEAD_CODE=['U','UR','R','DR','D','DL','L','UL'];
 const $=id=>document.getElementById(id);
-let level='IGP2', current=null, objCount=3;
+/* ---------- languages ---------- */
+// Hebrew is the source; English and German follow the same keys. Missing keys fall back to Hebrew.
+const I18N={
+he:{
+  title:'מחולל מסלולי גישוש',
+  intro:'מסלול לפי רמה (IGP 1–3, FH1, FH2): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. ב-FH2 יש גם פנייה חדה של 45° ועקבות חוצות. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.',
+  tabRandom:'מסלול אקראי',tabManual:'ציור ידני',objLbl:'חפצים',gen:'מסלול חדש',
+  toolDraw:'ציור מסלול',toolObj:'הנחת חפצים',toolAcute:'פנייה חדה',toolCross:'עקבות חוצות',
+  undo:'בטל פעולה',clear:'נקה',areaLbl:'שטח',
+  hCheck:'בדיקת המסלול',hSheet:'דף הנחת מסלול',thStep:'צעד',thWhat:'מה עושים',thPrev:'מהקודם',
+  hCode:'קוד המסלול',copy:'העתק קוד',codeNote:'את הקוד אפשר לשלוח ולטעון בלשונית "מסלול אקראי", בתיבת טעינת מסלול לפי קוד.',
+  codeLbl:'קוד:',toManual:'ערוך ידנית',hLoad:'טעינת מסלול לפי קוד',loadBtn:'טען',
+  settings:'הגדרות מרחקים',
+  sBefore:'מינימום צעדים בין חפץ לפנייה שאחריו',sAfter:'מינימום צעדים אחרי פנייה עד חפץ',sStart:'מינימום צעדים מהדגל עד חפץ ראשון',
+  sGap:'מינימום צעדים בין חפצים',sLeg:'אורך צלע מינימלי',sSep:'מרחק מינימלי בין צלעות לא סמוכות',sCross:'מינימום צעדים בין עקבות חוצות לפנייה (FH2)',
+  setNote:'קוד מסלול משחזר את אותו מסלול כל עוד ההגדרות זהות. המפה מצוירת עם כיוון ההתחלה למעלה; קו רשת דק = 10 צעדים, קו עבה = 50 צעדים.',
+  aTabs:'סוג מסלול',aLevels:'רמה',aObjs:'מספר חפצים',aObjMinus:'הסר חפץ',aObjPlus:'הוסף חפץ',aEditor:'ציור מסלול',aTool:'כלי',
+  aArea:'גודל המפה',aZoomOut:'מפה קטנה יותר (התקרב)',aZoomIn:'מפה גדולה יותר (התרחק)',aMap:'מפת המסלול',aCodeIn:'קוד מסלול',aLang:'שפה',
+  svgAria:'מפת מסלול הגישוש',edAria:'מפה לציור מסלול',steps50:'50 צעדים',tapFlag:'גע כאן כדי להציב את הדגל',
+  flag:'דגל התחלה',flagSub:'יציאה ישר קדימה',
+  turn:r=>r?'פנייה ימינה':'פנייה שמאלה',
+  sharpTurn:r=>`פנייה חדה ${r?'ימינה':'שמאלה'} (זווית 45°)`,
+  legEnd:(i,L)=>`סוף צלע ${i} (${L} צעדים)`,
+  crossTitle:k=>'עקבות חוצות'+(k?` ${k}`:''),
+  crossSub:(leg,off)=>`חוצים את צלע ${leg}, ${off} צעדים מתחילתה`,
+  obj:k=>`חפץ ${k}`,objEnd:'סוף המסלול',objSub:(leg,off)=>`צלע ${leg}, ${off} צעדים מתחילת הצלע`,
+  extraSharp:n=>n===1?'פנייה חדה':`${n} פניות חדות`,
+  extraCross:n=>n===1?'עקבות חוצות (קו מקווקו)':`${n} עקבות חוצות (קו מקווקו)`,
+  stats:(s,l,t,o)=>`${s} צעדים · ${l} צלעות · ${t} פניות · ${o} חפצים`,
+  codeFormat:'הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5',
+  noTrack:'לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.',
+  fitLess:(m,c)=>`במסלול הזה יש מקום ל-${m} חפצים לכל היותר, לכן הונחו ${c}.`,
+  fitMax:m=>`הגעת למקסימום: במסלול הזה יש מקום ל-${m} חפצים.`,
+  hintObj:'גע על קו המסלול כדי להניח חפץ. נגיעה בחפץ קיים מסירה אותו.',
+  hintNeedTrack:'קודם צייר מסלול, ואז אפשר להניח עליו חפצים.',
+  hintAcute:'גע בנקודת פנייה כדי להפוך אותה לפנייה חדה בזווית 45°. נגיעה נוספת מחזירה אותה ל-90°.',
+  hintAcuteEmpty:'קודם צייר מסלול עם פניות, ואז בחר איזו פנייה תהיה חדה.',
+  hintCross:'גרור על המפה כדי לשרטט עקבות חוצות בקו ישר. נגיעה בעקבות קיימים מוחקת אותם.',
+  hintEdit:'גרור את סוף המסלול כדי להמשיך, או גרור נקודת פנייה כדי להאריך או לקצר את הצלעות שלידה.',
+  hintContinue:'גרור מהנקודה המסומנת בסוף המסלול כדי להמשיך. שינוי כיוון יוצר פנייה, וגרירה אחורה מקצרת את הצלע.',
+  hintStart:'גע במפה כדי להציב את הדגל, ובלי להרים את האצבע גרור כדי לצייר את הצלע הראשונה.',
+  hintTouchLine:'גע על קו המסלול עצמו כדי להניח חפץ.',hintTapTurn:'גע באחת מנקודות הפנייה המסומנות.',
+  hintHasSharp:'במסלול יש כבר פנייה חדה. גע בה כדי להחזיר אותה ל-90°, ואז בחר פנייה אחרת.',
+  hintGrab:'כדי לערוך, גרור את סוף המסלול או אחת מנקודות הפנייה המסומנות.',
+  dragCross:'גורר… עקבות חוצות נמשכים בקו ישר.',dragCorner:'גורר נקודת פנייה… הצלעות שלידה מתארכות או מתקצרות.',
+  dragging:'גורר… שנה כיוון כדי ליצור פנייה.',nothingUndo:'אין פעולה לבטל.',noSmaller:'המסלול לא נכנס בשטח קטן יותר.',
+  noTrackYet:'עדיין אין מסלול.',checkEmpty:'צייר מסלול כדי לבדוק אותו מול כללי הרמה.',
+  ckLen:(s,n,name)=>`אורך: ${s} מתוך ${n} צעדים (${name})`,
+  ckLegs:(l,n)=>`צלעות: ${l} מתוך ${n} (${n-1} פניות)`,
+  sharpNotLast:(a,t)=>`הפנייה החדה צריכה להיות הפנייה האחרונה (כרגע היא פנייה ${a} מתוך ${t})`,
+  noSharpHere:'ברמה הזו אין פנייה חדה',oneSharp:'יש פנייה חדה אחת (זווית 45°)',
+  manySharp:n=>`${n} פניות חדות (צריך אחת בלבד)`,noSharp:'אין פנייה חדה (צריך אחת)',
+  needCross:'אין עקבות חוצות (צריך לפחות אחד)',noCrossHere:'ברמה הזו אין עקבות חוצות',
+  crossName:k=>k?`עקבות חוצות ${k}`:'עקבות חוצות',
+  crossOk:n=>`חוצים ${n} צלעות, רחוק מספיק מהפניות`,
+  objAtEnd:'יש חפץ בסוף המסלול',noObjAtEnd:'אין חפץ בסוף המסלול',objCount:n=>`${n} חפצים על המסלול`,
+  objFromFlag:(k,c,m)=>`חפץ ${k}: ${c} צעדים מהדגל (מינימום ${m})`,
+  objBefore:(k,d,m)=>`חפץ ${k}: ${d} צעדים לפני פנייה (מינימום ${m})`,
+  objAfter:(k,d,m)=>`חפץ ${k}: ${d} צעדים אחרי פנייה (מינימום ${m})`,
+  objGap:(i,j,d,m)=>`חפצים ${i} ו-${j}: ${d} צעדים ביניהם (מינימום ${m})`,
+  legsCross:(i,j)=>`צלעות ${i} ו-${j} נחתכות`,
+  legsClose:(i,j,d,m)=>`צלעות ${i} ו-${j} קרובות מדי (${d} צעדים, מינימום ${m})`,
+  distOk:'מרחקי החפצים והצלעות תקינים',
+  manualFormat:'קוד של מסלול ידני צריך להיראות כך: M-U120R80U100-90.200.300',
+  tooBig:'המסלול גדול מהמפה, ולכן חלק ממנו מחוץ לשטח הציור.',
+  copied:'הקוד הועתק',selected:'הקוד מסומן, אפשר להעתיק',selectedBox:'הקוד מסומן בתיבה, אפשר להעתיק',
+  pNear:i=>`עוברים צמוד לצלע ${i} בלי לחצות אותה`,pFirst:'חוצים את הצלע הראשונה',pLast:'חוצים את הצלע האחרונה',
+  pAfter:(d,sh,m)=>`חוצים ${d} צעדים אחרי ${sh?'הפנייה החדה':'פנייה'} (מינימום ${m})`,
+  pBefore:(d,sh,m)=>`חוצים ${d} צעדים לפני ${sh?'הפנייה החדה':'פנייה'} (מינימום ${m})`,
+  pObj:(d,k,m)=>`חוצים ${d} צעדים מחפץ ${k} (מינימום ${m})`,
+  pWedge:'חוצים את הפנייה החדה (את שתי הצלעות שלה)',
+  pNearTurn:(d,sh,m)=>`עוברים ${d} צעדים מ${sh?'הפנייה החדה':'נקודת פנייה'} (מינימום ${m})`,
+  pOneLeg:'חוצים רק צלע אחת (צריך לפחות שתיים)',pNone:'לא חוצים את המסלול'
+},
+en:{
+  title:'Tracking Track Generator',
+  intro:'Tracks by level (IGP 1–3, FH1, FH2): straight legs, 90° turns, articles along the track and the last article at the end. FH2 adds a sharp 45° turn and a cross track. Get a random track or draw your own.',
+  tabRandom:'Random',tabManual:'Draw by hand',objLbl:'Articles',gen:'New track',
+  toolDraw:'Draw track',toolObj:'Place articles',toolAcute:'Sharp turn',toolCross:'Cross track',
+  undo:'Undo',clear:'Clear',areaLbl:'Area',
+  hCheck:'Track check',hSheet:'Track-laying sheet',thStep:'Step',thWhat:'What to do',thPrev:'From previous',
+  hCode:'Track code',copy:'Copy code',codeNote:'You can send this code and load it in the "Random" tab, in the load-by-code box.',
+  codeLbl:'Code:',toManual:'Edit by hand',hLoad:'Load a track by code',loadBtn:'Load',
+  settings:'Distance settings',
+  sBefore:'Min. steps from an article to the next turn',sAfter:'Min. steps after a turn to an article',sStart:'Min. steps from the flag to the first article',
+  sGap:'Min. steps between articles',sLeg:'Minimum leg length',sSep:'Min. distance between non-adjacent legs',sCross:'Min. steps between a cross track and a turn (FH2)',
+  setNote:'A track code rebuilds the same track as long as the settings stay the same. The map is drawn with the starting direction pointing up; thin grid line = 10 steps, thick line = 50 steps.',
+  aTabs:'Track type',aLevels:'Level',aObjs:'Number of articles',aObjMinus:'Remove an article',aObjPlus:'Add an article',aEditor:'Draw a track',aTool:'Tool',
+  aArea:'Map size',aZoomOut:'Smaller area (zoom in)',aZoomIn:'Larger area (zoom out)',aMap:'Track map',aCodeIn:'Track code',aLang:'Language',
+  svgAria:'Tracking track map',edAria:'Map for drawing a track',steps50:'50 steps',tapFlag:'Tap here to place the flag',
+  flag:'Start flag',flagSub:'Head straight ahead',
+  turn:r=>r?'Turn right':'Turn left',
+  sharpTurn:r=>`Sharp turn ${r?'right':'left'} (45° angle)`,
+  legEnd:(i,L)=>`End of leg ${i} (${L} steps)`,
+  crossTitle:k=>'Cross track'+(k?` ${k}`:''),
+  crossSub:(leg,off)=>`Crosses leg ${leg}, ${off} steps from its start`,
+  obj:k=>`Article ${k}`,objEnd:'End of the track',objSub:(leg,off)=>`Leg ${leg}, ${off} steps from its start`,
+  extraSharp:n=>n===1?'sharp turn':`${n} sharp turns`,
+  extraCross:n=>n===1?'cross track (dashed line)':`${n} cross tracks (dashed line)`,
+  stats:(s,l,t,o)=>`${s} steps · ${l} legs · ${t} turns · ${o} articles`,
+  codeFormat:'A code looks like this: IGP2-48213, or with a number of articles: IGP2-48213-5',
+  noTrack:'No track fits these settings. Try lowering the minimum distances.',
+  fitLess:(m,c)=>`This track has room for at most ${m} articles, so ${c} were placed.`,
+  fitMax:m=>`Maximum reached: this track has room for ${m} articles.`,
+  hintObj:'Tap the track line to place an article. Tap an existing article to remove it.',
+  hintNeedTrack:'Draw a track first, then you can place articles on it.',
+  hintAcute:'Tap a turn point to make it a sharp 45° turn. Tap it again to set it back to 90°.',
+  hintAcuteEmpty:'Draw a track with turns first, then choose which turn is the sharp one.',
+  hintCross:'Drag on the map to draw a straight cross track. Tap an existing cross track to delete it.',
+  hintEdit:'Drag the end of the track to continue, or drag a turn point to lengthen or shorten the legs next to it.',
+  hintContinue:'Drag from the marked point at the end of the track to continue. Changing direction makes a turn; dragging back shortens the leg.',
+  hintStart:'Tap the map to place the flag, then drag without lifting your finger to draw the first leg.',
+  hintTouchLine:'Tap the track line itself to place an article.',hintTapTurn:'Tap one of the marked turn points.',
+  hintHasSharp:'The track already has a sharp turn. Tap it to set it back to 90°, then choose another turn.',
+  hintGrab:'To edit, drag the end of the track or one of the marked turn points.',
+  dragCross:'Dragging… a cross track is a straight line.',dragCorner:'Dragging a turn point… the legs next to it get longer or shorter.',
+  dragging:'Dragging… change direction to make a turn.',nothingUndo:'Nothing to undo.',noSmaller:'The track does not fit in a smaller area.',
+  noTrackYet:'No track yet.',checkEmpty:'Draw a track to check it against the level rules.',
+  ckLen:(s,n,name)=>`Length: ${s} of ${n} steps (${name})`,
+  ckLegs:(l,n)=>`Legs: ${l} of ${n} (${n-1} turns)`,
+  sharpNotLast:(a,t)=>`The sharp turn must be the last turn (now it is turn ${a} of ${t})`,
+  noSharpHere:'This level has no sharp turn',oneSharp:'One sharp turn (45° angle)',
+  manySharp:n=>`${n} sharp turns (only one allowed)`,noSharp:'No sharp turn (one is required)',
+  needCross:'No cross track (at least one is required)',noCrossHere:'This level has no cross track',
+  crossName:k=>k?`Cross track ${k}`:'Cross track',
+  crossOk:n=>`crosses ${n} legs, far enough from the turns`,
+  objAtEnd:'There is an article at the end of the track',noObjAtEnd:'No article at the end of the track',objCount:n=>`${n} articles on the track`,
+  objFromFlag:(k,c,m)=>`Article ${k}: ${c} steps from the flag (minimum ${m})`,
+  objBefore:(k,d,m)=>`Article ${k}: ${d} steps before a turn (minimum ${m})`,
+  objAfter:(k,d,m)=>`Article ${k}: ${d} steps after a turn (minimum ${m})`,
+  objGap:(i,j,d,m)=>`Articles ${i} and ${j}: ${d} steps apart (minimum ${m})`,
+  legsCross:(i,j)=>`Legs ${i} and ${j} cross each other`,
+  legsClose:(i,j,d,m)=>`Legs ${i} and ${j} are too close (${d} steps, minimum ${m})`,
+  distOk:'Article and leg distances are fine',
+  manualFormat:'A hand-drawn track code looks like this: M-U120R80U100-90.200.300',
+  tooBig:'The track is bigger than the map, so part of it is outside the drawing area.',
+  copied:'Code copied',selected:'Code selected, ready to copy',selectedBox:'Code selected in the box, ready to copy',
+  pNear:i=>`runs right next to leg ${i} without crossing it`,pFirst:'crosses the first leg',pLast:'crosses the last leg',
+  pAfter:(d,sh,m)=>`crosses ${d} steps after ${sh?'the sharp turn':'a turn'} (minimum ${m})`,
+  pBefore:(d,sh,m)=>`crosses ${d} steps before ${sh?'the sharp turn':'a turn'} (minimum ${m})`,
+  pObj:(d,k,m)=>`crosses ${d} steps from article ${k} (minimum ${m})`,
+  pWedge:'cuts across the sharp turn (crosses both of its legs)',
+  pNearTurn:(d,sh,m)=>`passes ${d} steps from ${sh?'the sharp turn':'a turn point'} (minimum ${m})`,
+  pOneLeg:'crosses only one leg (at least two are required)',pNone:'does not cross the track'
+},
+de:{
+  title:'Fährtengenerator',
+  intro:'Fährten nach Stufe (IGP 1–3, FH1, FH2): gerade Schenkel, rechte Winkel, Gegenstände entlang der Fährte und der letzte Gegenstand am Ende. Bei FH2 kommen ein spitzer Winkel (45°) und eine Verleitungsfährte dazu. Lass dir eine zufällige Fährte erstellen oder zeichne selbst eine.',
+  tabRandom:'Zufällig',tabManual:'Selbst zeichnen',objLbl:'Gegenstände',gen:'Neue Fährte',
+  toolDraw:'Fährte zeichnen',toolObj:'Gegenstände',toolAcute:'Spitzer Winkel',toolCross:'Verleitung',
+  undo:'Rückgängig',clear:'Löschen',areaLbl:'Fläche',
+  hCheck:'Fährtenprüfung',hSheet:'Legeplan',thStep:'Schritt',thWhat:'Was tun',thPrev:'Seit vorher',
+  hCode:'Fährtencode',copy:'Code kopieren',codeNote:'Diesen Code kannst du weitergeben und im Tab „Zufällig“ im Feld „Fährte per Code laden“ öffnen.',
+  codeLbl:'Code:',toManual:'Bearbeiten',hLoad:'Fährte per Code laden',loadBtn:'Laden',
+  settings:'Abstände einstellen',
+  sBefore:'Mindestschritte vom Gegenstand bis zum nächsten Winkel',sAfter:'Mindestschritte nach einem Winkel bis zum Gegenstand',sStart:'Mindestschritte vom Abgang bis zum ersten Gegenstand',
+  sGap:'Mindestschritte zwischen Gegenständen',sLeg:'Mindestlänge eines Schenkels',sSep:'Mindestabstand zwischen nicht benachbarten Schenkeln',sCross:'Mindestschritte zwischen Verleitung und Winkel (FH2)',
+  setNote:'Ein Fährtencode erzeugt dieselbe Fährte, solange die Einstellungen gleich bleiben. Die Karte ist mit der Startrichtung nach oben gezeichnet; dünne Linie = 10 Schritte, dicke Linie = 50 Schritte.',
+  aTabs:'Fährtenart',aLevels:'Stufe',aObjs:'Anzahl Gegenstände',aObjMinus:'Gegenstand entfernen',aObjPlus:'Gegenstand hinzufügen',aEditor:'Fährte zeichnen',aTool:'Werkzeug',
+  aArea:'Kartengröße',aZoomOut:'Kleinere Fläche (heranzoomen)',aZoomIn:'Größere Fläche (herauszoomen)',aMap:'Fährtenkarte',aCodeIn:'Fährtencode',aLang:'Sprache',
+  svgAria:'Fährtenkarte',edAria:'Karte zum Zeichnen der Fährte',steps50:'50 Schritte',tapFlag:'Hier tippen, um die Fahne zu setzen',
+  flag:'Abgang (Fahne)',flagSub:'Geradeaus losgehen',
+  turn:r=>r?'Winkel nach rechts':'Winkel nach links',
+  sharpTurn:r=>`Spitzer Winkel nach ${r?'rechts':'links'} (45°)`,
+  legEnd:(i,L)=>`Ende Schenkel ${i} (${L} Schritte)`,
+  crossTitle:k=>'Verleitung'+(k?` ${k}`:''),
+  crossSub:(leg,off)=>`Kreuzt Schenkel ${leg}, ${off} Schritte nach dessen Beginn`,
+  obj:k=>`Gegenstand ${k}`,objEnd:'Ende der Fährte',objSub:(leg,off)=>`Schenkel ${leg}, ${off} Schritte nach Beginn`,
+  extraSharp:n=>n===1?'spitzer Winkel':`${n} spitze Winkel`,
+  extraCross:n=>n===1?'Verleitung (gestrichelte Linie)':`${n} Verleitungen (gestrichelte Linie)`,
+  stats:(s,l,t,o)=>`${s} Schritte · ${l} Schenkel · ${t} Winkel · ${o} Gegenstände`,
+  codeFormat:'Ein Code sieht so aus: IGP2-48213, mit Anzahl der Gegenstände: IGP2-48213-5',
+  noTrack:'Keine Fährte passt zu diesen Einstellungen. Verringere die Mindestabstände.',
+  fitLess:(m,c)=>`Auf dieser Fährte ist Platz für höchstens ${m} Gegenstände, daher wurden ${c} gelegt.`,
+  fitMax:m=>`Maximum erreicht: Auf dieser Fährte ist Platz für ${m} Gegenstände.`,
+  hintObj:'Tippe auf die Fährtenlinie, um einen Gegenstand zu legen. Tippe auf einen Gegenstand, um ihn zu entfernen.',
+  hintNeedTrack:'Zeichne zuerst eine Fährte, dann kannst du Gegenstände darauf legen.',
+  hintAcute:'Tippe auf einen Winkelpunkt, um daraus einen spitzen Winkel (45°) zu machen. Nochmal tippen stellt 90° wieder her.',
+  hintAcuteEmpty:'Zeichne zuerst eine Fährte mit Winkeln und wähle dann den spitzen Winkel.',
+  hintCross:'Ziehe auf der Karte, um eine gerade Verleitung zu zeichnen. Tippe auf eine Verleitung, um sie zu löschen.',
+  hintEdit:'Ziehe das Fährtenende, um weiterzuzeichnen, oder ziehe einen Winkelpunkt, um die Schenkel daneben zu verlängern oder zu kürzen.',
+  hintContinue:'Ziehe vom markierten Punkt am Fährtenende, um weiterzuzeichnen. Ein Richtungswechsel ergibt einen Winkel, Zurückziehen kürzt den Schenkel.',
+  hintStart:'Tippe auf die Karte, um die Fahne zu setzen, und ziehe dann ohne loszulassen den ersten Schenkel.',
+  hintTouchLine:'Tippe direkt auf die Fährtenlinie, um einen Gegenstand zu legen.',hintTapTurn:'Tippe auf einen der markierten Winkelpunkte.',
+  hintHasSharp:'Die Fährte hat schon einen spitzen Winkel. Tippe darauf, um ihn auf 90° zurückzusetzen, und wähle dann einen anderen.',
+  hintGrab:'Zum Bearbeiten ziehe das Fährtenende oder einen der markierten Winkelpunkte.',
+  dragCross:'Ziehen… die Verleitung ist eine gerade Linie.',dragCorner:'Winkelpunkt wird gezogen… die Schenkel daneben werden länger oder kürzer.',
+  dragging:'Ziehen… Richtung wechseln ergibt einen Winkel.',nothingUndo:'Nichts rückgängig zu machen.',noSmaller:'Die Fährte passt nicht auf eine kleinere Fläche.',
+  noTrackYet:'Noch keine Fährte.',checkEmpty:'Zeichne eine Fährte, um sie mit den Regeln der Stufe zu prüfen.',
+  ckLen:(s,n,name)=>`Länge: ${s} von ${n} Schritten (${name})`,
+  ckLegs:(l,n)=>`Schenkel: ${l} von ${n} (${n-1} Winkel)`,
+  sharpNotLast:(a,t)=>`Der spitze Winkel muss der letzte Winkel sein (jetzt ist es Winkel ${a} von ${t})`,
+  noSharpHere:'Diese Stufe hat keinen spitzen Winkel',oneSharp:'Ein spitzer Winkel (45°)',
+  manySharp:n=>`${n} spitze Winkel (nur einer erlaubt)`,noSharp:'Kein spitzer Winkel (einer ist nötig)',
+  needCross:'Keine Verleitung (mindestens eine ist nötig)',noCrossHere:'Diese Stufe hat keine Verleitung',
+  crossName:k=>k?`Verleitung ${k}`:'Verleitung',
+  crossOk:n=>`kreuzt ${n} Schenkel, weit genug von den Winkeln`,
+  objAtEnd:'Am Fährtenende liegt ein Gegenstand',noObjAtEnd:'Am Fährtenende liegt kein Gegenstand',objCount:n=>`${n} Gegenstände auf der Fährte`,
+  objFromFlag:(k,c,m)=>`Gegenstand ${k}: ${c} Schritte vom Abgang (mindestens ${m})`,
+  objBefore:(k,d,m)=>`Gegenstand ${k}: ${d} Schritte vor einem Winkel (mindestens ${m})`,
+  objAfter:(k,d,m)=>`Gegenstand ${k}: ${d} Schritte nach einem Winkel (mindestens ${m})`,
+  objGap:(i,j,d,m)=>`Gegenstände ${i} und ${j}: ${d} Schritte Abstand (mindestens ${m})`,
+  legsCross:(i,j)=>`Schenkel ${i} und ${j} kreuzen sich`,
+  legsClose:(i,j,d,m)=>`Schenkel ${i} und ${j} liegen zu nah beieinander (${d} Schritte, mindestens ${m})`,
+  distOk:'Abstände von Gegenständen und Schenkeln sind in Ordnung',
+  manualFormat:'Ein Code für eine gezeichnete Fährte sieht so aus: M-U120R80U100-90.200.300',
+  tooBig:'Die Fährte ist größer als die Karte, ein Teil liegt außerhalb der Zeichenfläche.',
+  copied:'Code kopiert',selected:'Code markiert, bereit zum Kopieren',selectedBox:'Code im Feld markiert, bereit zum Kopieren',
+  pNear:i=>`verläuft dicht an Schenkel ${i}, ohne ihn zu kreuzen`,pFirst:'kreuzt den ersten Schenkel',pLast:'kreuzt den letzten Schenkel',
+  pAfter:(d,sh,m)=>`kreuzt ${d} Schritte nach ${sh?'dem spitzen Winkel':'einem Winkel'} (mindestens ${m})`,
+  pBefore:(d,sh,m)=>`kreuzt ${d} Schritte vor ${sh?'dem spitzen Winkel':'einem Winkel'} (mindestens ${m})`,
+  pObj:(d,k,m)=>`kreuzt ${d} Schritte von Gegenstand ${k} (mindestens ${m})`,
+  pWedge:'schneidet den spitzen Winkel (kreuzt beide Schenkel)',
+  pNearTurn:(d,sh,m)=>`verläuft ${d} Schritte von ${sh?'dem spitzen Winkel':'einem Winkelpunkt'} (mindestens ${m})`,
+  pOneLeg:'kreuzt nur einen Schenkel (mindestens zwei sind nötig)',pNone:'kreuzt die Fährte nicht'
+}};
+const LANGS={he:{dir:'rtl'},en:{dir:'ltr'},de:{dir:'ltr'}};
+let lang=(()=>{try{const l=localStorage.getItem('trk-lang');return LANGS[l]?l:'he'}catch(e){return'he'}})();
+function T(k,...a){const d=I18N[lang]||I18N.he;const v=k in d?d[k]:I18N.he[k];return typeof v==='function'?v(...a):v}
+let level='IGP1', current=null, objCount=3;
 const OBJ_MIN=1, OBJ_MAX=12;
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -345,33 +576,33 @@ function placeObjects(t,count,S){
 }
 
 const CROSS_OBJ=30; // objects stay this many steps (along the track) away from a cross track
-const turnName=(t,k)=>Math.abs(t.turns[k])===3?'הפנייה החדה':'פנייה';
+const isSharp=(t,k)=>Math.abs(t.turns[k])===3;
 // Where a cross track [x1,y1,x2,y2] crosses the main track, and which rules it breaks.
 function crossInfo(t,c,S,near=10){
   const a=[c[0],c[1]],b=[c[2],c[3]],n=t.lens.length,hits=[],probs=[];let st=0;
   t.lens.forEach((L,i)=>{
     const p=t.pts[i],q=t.pts[i+1],x=segX(a,b,p,q);
     if(x){const off=Math.round(x.tb*L);hits.push({leg:i,off,cum:st+off,s:x.ta})}
-    else if(segDist([a,b],[p,q])<near)probs.push(`עוברים צמוד לצלע ${i+1} בלי לחצות אותה`);
+    else if(segDist([a,b],[p,q])<near)probs.push(T('pNear',i+1));
     st+=L;
   });
   hits.sort((x,y)=>x.s-y.s);
   hits.forEach(h=>{
     const L=t.lens[h.leg];
-    if(h.leg===0)probs.push('חוצים את הצלע הראשונה');
-    else if(h.leg===n-1)probs.push('חוצים את הצלע האחרונה');
-    if(h.leg>0&&h.off<S.cross)probs.push(`חוצים ${h.off} צעדים אחרי ${turnName(t,h.leg-1)} (מינימום ${S.cross})`);
-    if(h.leg<n-1&&L-h.off<S.cross)probs.push(`חוצים ${L-h.off} צעדים לפני ${turnName(t,h.leg)} (מינימום ${S.cross})`);
-    (t.objs||[]).forEach((o,k)=>{const d=Math.abs(o.cum-h.cum);if(d<CROSS_OBJ)probs.push(`חוצים ${d} צעדים מחפץ ${k+1} (מינימום ${CROSS_OBJ})`)});
+    if(h.leg===0)probs.push(T('pFirst'));
+    else if(h.leg===n-1)probs.push(T('pLast'));
+    if(h.leg>0&&h.off<S.cross)probs.push(T('pAfter',h.off,isSharp(t,h.leg-1),S.cross));
+    if(h.leg<n-1&&L-h.off<S.cross)probs.push(T('pBefore',L-h.off,isSharp(t,h.leg),S.cross));
+    (t.objs||[]).forEach((o,k)=>{const d=Math.abs(o.cum-h.cum);if(d<CROSS_OBJ)probs.push(T('pObj',d,k+1,CROSS_OBJ))});
   });
   // Never cut across a turn: not through both legs of the sharp turn, and not passing close to any turn point
   for(let k=1;k<n;k++){
     const sharp=Math.abs(t.turns[k-1])===3,dr=ptSeg(t.pts[k],a,b),d=Math.floor(dr);
-    if(sharp&&hits.some(h=>h.leg===k-1)&&hits.some(h=>h.leg===k))probs.push('חוצים את הפנייה החדה (את שתי הצלעות שלה)');
-    else if(dr<S.cross)probs.push(`עוברים ${d} צעדים מ${sharp?'הפנייה החדה':'נקודת פנייה'} (מינימום ${S.cross})`);
+    if(sharp&&hits.some(h=>h.leg===k-1)&&hits.some(h=>h.leg===k))probs.push(T('pWedge'));
+    else if(dr<S.cross)probs.push(T('pNearTurn',d,sharp,S.cross));
   }
   const legs=new Set(hits.map(h=>h.leg));
-  if(legs.size<2)probs.push(legs.size?'חוצים רק צלע אחת (צריך לפחות שתיים)':'לא חוצים את המסלול');
+  if(legs.size<2)probs.push(legs.size?T('pOneLeg'):T('pNone'));
   return{hits,probs:[...new Set(probs)]};
 }
 
@@ -429,7 +660,7 @@ function draw(t){
   let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
   const ext=Math.max(x1-x0,y1-y0,120),pad=ext*0.16,s=ext*0.03;
   x0-=pad;x1+=pad;y0-=pad;y1+=pad*1.35;
-  const svg=el('svg',{viewBox:`${x0} ${y0} ${x1-x0} ${y1-y0}`,role:'img','aria-label':'מפת מסלול הגישוש'});
+  const svg=el('svg',{viewBox:`${x0} ${y0} ${x1-x0} ${y1-y0}`,role:'img','aria-label':T('svgAria')});
   drawInto(svg,t,{x0,y0,x1,y1,pad,s,scale:true});
   return svg;
 }
@@ -514,20 +745,20 @@ function drawInto(svg,t,B){
   el('line',{x1:sx,y1:sy,x2:sx+50,y2:sy,class:'scale','vector-effect':'non-scaling-stroke'},svg);
   el('line',{x1:sx,y1:sy-s*0.5,x2:sx,y2:sy+s*0.5,class:'scale','vector-effect':'non-scaling-stroke'},svg);
   el('line',{x1:sx+50,y1:sy-s*0.5,x2:sx+50,y2:sy+s*0.5,class:'scale','vector-effect':'non-scaling-stroke'},svg);
-  el('text',{x:sx+25,y:sy-s*0.8,'text-anchor':'middle','font-size':fs*0.9,class:'mut'},svg,'50 צעדים');
+  el('text',{x:sx+25,y:sy-s*0.8,'text-anchor':'middle','font-size':fs*0.9,class:'mut'},svg,T('steps50'));
   return svg;
 }
 
 function rowsFor(t){
-  const ev=[{at:0,kind:'flag',title:'דגל התחלה',sub:'יציאה ישר קדימה'}];
+  const ev=[{at:0,kind:'flag',title:T('flag'),sub:T('flagSub')}];
   let cum=0;const n=t.lens.length;
   t.lens.forEach((L,i)=>{cum+=L;if(i<n-1){
-    const v=t.turns[i],side=v>0?'ימינה':'שמאלה',sharp=Math.abs(v)===3;
-    ev.push({at:cum,kind:sharp?'turn acute':'turn',title:sharp?`פנייה חדה ${side} (זווית 45°)`:`פנייה ${side}`,sub:`סוף צלע ${i+1} (${L} צעדים)`});
+    const v=t.turns[i],sharp=Math.abs(v)===3;
+    ev.push({at:cum,kind:sharp?'turn acute':'turn',title:sharp?T('sharpTurn',v>0):T('turn',v>0),sub:T('legEnd',i+1,L)});
   }});
   const S=settings(),cr=t.cross||[];
-  cr.forEach((c,ci)=>crossInfo(t,c,S).hits.forEach(h=>ev.push({at:h.cum,kind:'cross',title:'עקבות חוצות'+(cr.length>1?` ${ci+1}`:''),sub:`חוצים את צלע ${h.leg+1}, ${h.off} צעדים מתחילתה`})));
-  t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:`חפץ ${i+1}`,sub:o.cum===t.steps?'סוף המסלול':`צלע ${o.leg+1}, ${o.off} צעדים מתחילת הצלע`}));
+  cr.forEach((c,ci)=>crossInfo(t,c,S).hits.forEach(h=>ev.push({at:h.cum,kind:'cross',title:T('crossTitle',cr.length>1?ci+1:0),sub:T('crossSub',h.leg+1,h.off)})));
+  t.objs.forEach((o,i)=>ev.push({at:o.cum,kind:'obj',title:T('obj',i+1),sub:o.cum===t.steps?T('objEnd'):T('objSub',o.leg+1,o.off)}));
   ev.sort((a,b)=>a.at-b.at||(a.kind==='obj'?1:b.kind==='obj'?-1:0));
   let prev=0;
   return ev.map(e=>{const d=e.at-prev;prev=e.at;return`<tr><td class="n">${e.at}</td><td><div class="ev"><span class="pip ${e.kind}"></span><div>${e.title}<small>${e.sub}</small></div></div></td><td class="n">${e.kind==='flag'?'–':'+'+d}</td></tr>`}).join('');
@@ -548,8 +779,8 @@ function setLevel(lv){level=lv;document.querySelectorAll('#levels button').forEa
 function extrasText(t){
   const parts=[];
   const sharp=t.turns.filter(v=>Math.abs(v)===3).length;
-  if(sharp)parts.push(sharp===1?'פנייה חדה':`${sharp} פניות חדות`);
-  if(t.cross&&t.cross.length)parts.push(t.cross.length===1?'עקבות חוצות (קו מקווקו)':`${t.cross.length} עקבות חוצות (קו מקווקו)`);
+  if(sharp)parts.push(T('extraSharp',sharp));
+  if(t.cross&&t.cross.length)parts.push(T('extraCross',t.cross.length));
   return parts.map(p=>' · '+p).join('');
 }
 
@@ -558,20 +789,20 @@ function render(t){
   $('svgbox').replaceChildren(draw(t));
   $('rows').innerHTML=rowsFor(t);
   $('code').textContent=codeOf(t);
-  $('summary').textContent=`${LEVELS[t.level].name} · ${t.steps} צעדים · ${t.lens.length} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`+extrasText(t);
+  $('summary').textContent=`${LEVELS[t.level].name} · `+T('stats',t.steps,t.lens.length,t.turns.length,t.objs.length)+extrasText(t);
   pushRecent(codeOf(t));
 }
 
 function show(code){
   if(/^\s*M\s*-/i.test(code||'')){loadManual(code);return}
   const m=/^\s*(IGP\s*[123]|FH\s*[12])\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
-  if(!m){note('הקוד צריך להיראות כך: IGP2-48213, ועם מספר חפצים: IGP2-48213-5');return}
+  if(!m){note(T('codeFormat'));return}
   const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:defObjs(lv));
   const t=generate(lv,seed,objCount);
-  if(!t){note('לא נמצא מסלול שעומד בהגדרות. נסה להקטין את המרחקים המינימליים.');return}
+  if(!t){note(T('noTrack'));return}
   render(t);setCount(t.count);
-  if(t.requested>t.count)note(`במסלול הזה יש מקום ל-${t.maxFit} חפצים לכל היותר, לכן הונחו ${t.count}.`);
-  else if(t.count>=t.maxFit&&t.maxFit<OBJ_MAX)note(`הגעת למקסימום: במסלול הזה יש מקום ל-${t.maxFit} חפצים.`);
+  if(t.requested>t.count)note(T('fitLess',t.maxFit,t.count));
+  else if(t.count>=t.maxFit&&t.maxFit<OBJ_MAX)note(T('fitMax',t.maxFit));
   else note('');
 }
 function fresh(){show(`${level}-${10000+Math.floor(Math.random()*90000)}-${objCount}`)}
@@ -616,7 +847,7 @@ const lastH=()=>ed.legs.length?ed.legs[ed.legs.length-1].h:null;
 function edPoints(){const p=edCorners();ed.cross.forEach(c=>p.push([c[0],c[1]],[c[2],c[3]]));return p}
 const sharpIdx=()=>ed.legs.findIndex((l,k)=>k>0&&Math.abs(norm8(l.h-ed.legs[k-1].h))===3);
 
-const edSvg=el('svg',{class:'editor',role:'img','aria-label':'מפה לציור מסלול'});
+const edSvg=el('svg',{class:'editor',role:'img','aria-label':T('edAria')});
 function bbox(cs){const xs=cs.map(q=>q[0]),ys=cs.map(q=>q[1]);return{x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys)}}
 // smallest area that holds the track with a margin (never below the level's usual size)
 function areaFor(pts){
@@ -637,11 +868,11 @@ $('edbox').appendChild(edSvg);
 
 function setHint(text,flash){$('hint').textContent=text;$('hint').classList.toggle('flash',!!flash)}
 function defaultHint(){
-  if(tool==='obj')return ed.legs.length?'גע על קו המסלול כדי להניח חפץ. נגיעה בחפץ קיים מסירה אותו.':'קודם צייר מסלול, ואז אפשר להניח עליו חפצים.';
-  if(tool==='acute')return ed.legs.length>1?'גע בנקודת פנייה כדי להפוך אותה לפנייה חדה בזווית 45°. נגיעה נוספת מחזירה אותה ל-90°.':'קודם צייר מסלול עם פניות, ואז בחר איזו פנייה תהיה חדה.';
-  if(tool==='cross')return 'גרור על המפה כדי לשרטט עקבות חוצות בקו ישר. נגיעה בעקבות קיימים מוחקת אותם.';
-  if(ed.legs.length>1)return 'גרור את סוף המסלול כדי להמשיך, או גרור נקודת פנייה כדי להאריך או לקצר את הצלעות שלידה.';
-  return ed.start?'גרור מהנקודה המסומנת בסוף המסלול כדי להמשיך. שינוי כיוון יוצר פנייה, וגרירה אחורה מקצרת את הצלע.':'גע במפה כדי להציב את הדגל, ובלי להרים את האצבע גרור כדי לצייר את הצלע הראשונה.';
+  if(tool==='obj')return ed.legs.length?T('hintObj'):T('hintNeedTrack');
+  if(tool==='acute')return ed.legs.length>1?T('hintAcute'):T('hintAcuteEmpty');
+  if(tool==='cross')return T('hintCross');
+  if(ed.legs.length>1)return T('hintEdit');
+  return ed.start?T('hintContinue'):T('hintStart');
 }
 function syncTools(){
   // the sharp-turn and cross-track tools belong to FH2 (or to a track that already has them)
@@ -662,7 +893,7 @@ function renderEditor(){
   edG.replaceChildren();
   drawInto(edG,t,EB);
   el('rect',{x:0,y:0,width:AREA,height:AREA,class:'areaedge','vector-effect':'non-scaling-stroke'},edG);
-  if(!ed.start)el('text',{x:AREA/2,y:AREA/2,'text-anchor':'middle','font-size':ES*1.4,class:'mut'},edG,'גע כאן כדי להציב את הדגל');
+  if(!ed.start)el('text',{x:AREA/2,y:AREA/2,'text-anchor':'middle','font-size':ES*1.4,class:'mut'},edG,T('tapFlag'));
   else if(tool==='draw'||tool==='acute'){
     const cs=edCorners();
     if(tool==='draw'){const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG)}
@@ -672,44 +903,44 @@ function renderEditor(){
   if(!dragging&&!cornerDrag&&!crossDraft)setHint(defaultHint());
   // side panels
   const n=t.lens.length;
-  $('mSummary').textContent=n?`${t.steps} צעדים · ${n} צלעות · ${t.turns.length} פניות · ${t.objs.length} חפצים`+extrasText(t):'עדיין אין מסלול.';
+  $('mSummary').textContent=n?T('stats',t.steps,n,t.turns.length,t.objs.length)+extrasText(t):T('noTrackYet');
   $('checks').innerHTML=checksFor(t).map(c=>`<li class="${c[0]}">${c[1]}</li>`).join('');
   $('mRows').innerHTML=t.pts.length?rowsFor(t):'';
   $('mCode').textContent=n?manualCode(t):'–';
 }
 
 function checksFor(t){
-  if(!t.lens.length)return[['info','צייר מסלול כדי לבדוק אותו מול כללי הרמה.']];
+  if(!t.lens.length)return[['info',T('checkEmpty')]];
   const L=LEVELS[level],S=settings(),n=t.lens.length,out=[];
-  out.push([t.steps===L.steps?'ok':'bad',`אורך: ${t.steps} מתוך ${L.steps} צעדים (${L.name})`]);
-  out.push([n===L.legs?'ok':'bad',`צלעות: ${n} מתוך ${L.legs} (${L.legs-1} פניות)`]);
+  out.push([t.steps===L.steps?'ok':'bad',T('ckLen',t.steps,L.steps,L.name)]);
+  out.push([n===L.legs?'ok':'bad',T('ckLegs',n,L.legs)]);
   const firstMin=Math.max(S.start,L.firstObj||0);
   const sharp=t.turns.filter(v=>Math.abs(v)===3).length,needSharp=L.acute||0;
   const sharpAt=t.turns.findIndex(v=>Math.abs(v)===3);
-  if(needSharp&&sharp===1&&sharpAt!==t.turns.length-1)out.push(['bad',`הפנייה החדה צריכה להיות הפנייה האחרונה (כרגע היא פנייה ${sharpAt+1} מתוך ${t.turns.length})`]);
+  if(needSharp&&sharp===1&&sharpAt!==t.turns.length-1)out.push(['bad',T('sharpNotLast',sharpAt+1,t.turns.length)]);
   if(needSharp||sharp)out.push([sharp===needSharp?'ok':'bad',
-    !needSharp?'ברמה הזו אין פנייה חדה':sharp===needSharp?'יש פנייה חדה אחת (זווית 45°)':sharp?`${sharp} פניות חדות (צריך אחת בלבד)`:'אין פנייה חדה (צריך אחת)']);
+    !needSharp?T('noSharpHere'):sharp===needSharp?T('oneSharp'):sharp?T('manySharp',sharp):T('noSharp')]);
   const cr=t.cross||[];
-  if(L.cross&&!cr.length)out.push(['bad','אין עקבות חוצות (צריך לפחות אחד)']);
-  if(!L.cross&&cr.length)out.push(['bad','ברמה הזו אין עקבות חוצות']);
+  if(L.cross&&!cr.length)out.push(['bad',T('needCross')]);
+  if(!L.cross&&cr.length)out.push(['bad',T('noCrossHere')]);
   cr.forEach((c,ci)=>{
-    const info=crossInfo(t,c,S),name=cr.length>1?`עקבות חוצות ${ci+1}`:'עקבות חוצות';
+    const info=crossInfo(t,c,S),name=T('crossName',cr.length>1?ci+1:0);
     if(info.probs.length)info.probs.forEach(p=>out.push(['bad',`${name}: ${p}`]));
-    else out.push(['ok',`${name}: חוצים ${info.hits.length} צלעות, רחוק מספיק מהפניות`]);
+    else out.push(['ok',`${name}: `+T('crossOk',info.hits.length)]);
   });
-  out.push([t.objs.some(o=>o.cum===t.steps)?'ok':'bad',t.objs.some(o=>o.cum===t.steps)?'יש חפץ בסוף המסלול':'אין חפץ בסוף המסלול']);
-  out.push(['info',`${t.objs.length} חפצים על המסלול`]);
+  out.push([t.objs.some(o=>o.cum===t.steps)?'ok':'bad',t.objs.some(o=>o.cum===t.steps)?T('objAtEnd'):T('noObjAtEnd')]);
+  out.push(['info',T('objCount',t.objs.length)]);
   const bad=[];
   t.objs.forEach((o,i)=>{
     const k=i+1;if(o.cum===t.steps)return;
-    if(o.cum<firstMin)bad.push(`חפץ ${k}: ${o.cum} צעדים מהדגל (מינימום ${firstMin})`);
-    if(o.leg<n-1&&t.lens[o.leg]-o.off<S.before)bad.push(`חפץ ${k}: ${t.lens[o.leg]-o.off} צעדים לפני פנייה (מינימום ${S.before})`);
-    if(o.leg>0&&o.off<S.after)bad.push(`חפץ ${k}: ${o.off} צעדים אחרי פנייה (מינימום ${S.after})`);
+    if(o.cum<firstMin)bad.push(T('objFromFlag',k,o.cum,firstMin));
+    if(o.leg<n-1&&t.lens[o.leg]-o.off<S.before)bad.push(T('objBefore',k,t.lens[o.leg]-o.off,S.before));
+    if(o.leg>0&&o.off<S.after)bad.push(T('objAfter',k,o.off,S.after));
   });
-  for(let i=1;i<t.objs.length;i++){const d=t.objs[i].cum-t.objs[i-1].cum;if(d<S.gap)bad.push(`חפצים ${i} ו-${i+1}: ${d} צעדים ביניהם (מינימום ${S.gap})`)}
+  for(let i=1;i<t.objs.length;i++){const d=t.objs[i].cum-t.objs[i-1].cum;if(d<S.gap)bad.push(T('objGap',i,i+1,d,S.gap))}
   const segs=t.lens.map((_,i)=>[t.pts[i],t.pts[i+1]]);
-  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=segDist(segs[i],segs[j]);if(d<S.sep)bad.push(d<0.5?`צלעות ${i+1} ו-${j+1} נחתכות`:`צלעות ${i+1} ו-${j+1} קרובות מדי (${Math.round(d)} צעדים, מינימום ${S.sep})`)}
-  if(bad.length)bad.forEach(b=>out.push(['bad',b]));else out.push(['ok','מרחקי החפצים והצלעות תקינים']);
+  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=segDist(segs[i],segs[j]);if(d<S.sep)bad.push(d<0.5?T('legsCross',i+1,j+1):T('legsClose',i+1,j+1,Math.round(d),S.sep))}
+  if(bad.length)bad.forEach(b=>out.push(['bad',b]));else out.push(['ok',T('distOk')]);
   return out;
 }
 
@@ -724,7 +955,7 @@ function manualCode(t){
 }
 function loadManual(code){
   const m=/^\s*M\s*-\s*((?:(?:UR|DR|DL|UL|U|R|D|L)\d{1,4})+)\s*(?:-\s*(\d+(?:\.\d+)*))?\s*(?:-\s*X\s*(-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*))?\s*$/i.exec(code||'');
-  if(!m){note('קוד של מסלול ידני צריך להיראות כך: M-U120R80U100-90.200.300');return}
+  if(!m){note(T('manualFormat'));return}
   const legs=m[1].toUpperCase().match(/(UR|DR|DL|UL|U|R|D|L)\d+/g).map(s=>{const k=s.match(/^[A-Z]+/)[0];return{h:HEAD_CODE.indexOf(k),L:+s.slice(k.length)}});
   snapshot();
   ed={start:[0,0],legs,objs:m[2]?m[2].split('.').map(Number):[],cross:m[3]?m[3].split(';').map(s=>s.split(',').map(Number)):[],area:400};
@@ -734,7 +965,7 @@ function loadManual(code){
   setArea(areaFor(edPoints()));
   setMode('manual');saveDraft();renderEditor();
   const b=bbox(edPoints());
-  note(Math.max(b.x1-b.x0,b.y1-b.y0)>ed.area?'המסלול גדול מהמפה, ולכן חלק ממנו מחוץ לשטח הציור.':'');
+  note(Math.max(b.x1-b.x0,b.y1-b.y0)>ed.area?T('tooBig'):'');
 }
 
 function snapshot(){history.push(JSON.stringify(ed));if(history.length>100)history.shift()}
@@ -768,7 +999,7 @@ function extend(q,depth=0){
 
 function placeObjAt(p){
   const t=edTrack();
-  if(!t.lens.length){setHint('קודם צייר מסלול, ואז אפשר להניח עליו חפצים.',true);return}
+  if(!t.lens.length){setHint(T('hintNeedTrack'),true);return}
   let best=null,st=0;
   t.lens.forEach((L,i)=>{
     const a=t.pts[i],d=DIRS[t.heads[i]];
@@ -777,7 +1008,7 @@ function placeObjAt(p){
     if(!best||dist<best.dist)best={dist,cum:st+proj};
     st+=L;
   });
-  if(best.dist>tol(26,15)){setHint('גע על קו המסלול עצמו כדי להניח חפץ.',true);return}
+  if(best.dist>tol(26,15)){setHint(T('hintTouchLine'),true);return}
   const cum=Math.max(5,Math.min(t.steps,Math.round(best.cum/5)*5));
   snapshot();
   const near=ed.objs.findIndex(c=>Math.abs(c-cum)<=8);
@@ -794,10 +1025,10 @@ function nearestCorner(p){
 // Turn a 90° turn into the sharp 45° one (or back). The rest of the track swings around that point.
 function toggleAcute(p){
   const i=nearestCorner(p);
-  if(i<0){setHint('גע באחת מנקודות הפנייה המסומנות.',true);return}
+  if(i<0){setHint(T('hintTapTurn'),true);return}
   const d=norm8(ed.legs[i].h-ed.legs[i-1].h),sg=Math.sign(d);
   if(Math.abs(d)===2){
-    if(sharpIdx()>=0){setHint('במסלול יש כבר פנייה חדה. גע בה כדי להחזיר אותה ל-90°, ואז בחר פנייה אחרת.',true);return}
+    if(sharpIdx()>=0){setHint(T('hintHasSharp'),true);return}
     snapshot();for(let k=i;k<ed.legs.length;k++)ed.legs[k].h=(ed.legs[k].h+sg+8)%8;
   }else if(Math.abs(d)===3){
     snapshot();for(let k=i;k<ed.legs.length;k++)ed.legs[k].h=(ed.legs[k].h-sg+8)%8;
@@ -846,24 +1077,24 @@ edSvg.addEventListener('pointerdown',e=>{
   if(tool==='cross'){
     crossDraft={a:[snap5(p.x),snap5(p.y)],b:null,p};
     try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
-    setHint('גורר… עקבות חוצות נמשכים בקו ישר.');renderEditor();return;
+    setHint(T('dragCross'));renderEditor();return;
   }
   if(!ed.start){snapshot();ed.start=[snap10(p.x),snap10(p.y)];}
   else{const end=endPt();
     if(Math.hypot(p.x-end[0],p.y-end[1])>tol(28,20)){
       const gi=nearestCorner(p);
-      if(gi<0){setHint('כדי לערוך, גרור את סוף המסלול או אחת מנקודות הפנייה המסומנות.',true);return}
+      if(gi<0){setHint(T('hintGrab'),true);return}
       snapshot();
       const t=edTrack();
       cornerDrag={i:gi,base:JSON.parse(JSON.stringify({start:ed.start,legs:ed.legs})),pins:t.objs.map(o=>({leg:o.leg,off:o.off,end:o.cum===t.steps}))};
       try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
-      setHint('גורר נקודת פנייה… הצלעות שלידה מתארכות או מתקצרות.');
+      setHint(T('dragCorner'));
       renderEditor();return;
     }
     snapshot();}
   dragging=true;lineH=null;live=null;
   try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
-  setHint('גורר… שנה כיוון כדי ליצור פנייה.');
+  setHint(T('dragging'));
   renderEditor();
 });
 edSvg.addEventListener('pointermove',e=>{
@@ -890,13 +1121,13 @@ edSvg.addEventListener('pointercancel',endDrag);
 
 function setTool(tl){tool=tl;renderEditor()}
 document.querySelectorAll('#tool button').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
-$('undo').addEventListener('click',()=>{if(!history.length){setHint('אין פעולה לבטל.',true);return}ed=JSON.parse(history.pop());saveDraft();renderEditor()});
+$('undo').addEventListener('click',()=>{if(!history.length){setHint(T('nothingUndo'),true);return}ed=JSON.parse(history.pop());saveDraft();renderEditor()});
 $('clear').addEventListener('click',()=>{if(!ed.start&&!ed.cross.length)return;snapshot();ed=emptyEd(LEVEL_AREA[level]);saveDraft();setTool('draw')});
 function zoom(dir){
   const i=AREAS.indexOf(ed.area),A=AREAS[Math.max(0,Math.min(AREAS.length-1,(i<0?2:i)+dir))];
   if(A===ed.area)return;
   const pts=edPoints();
-  if(dir<0&&pts.length){const b=bbox(pts);if(Math.max(b.x1-b.x0,b.y1-b.y0)+20>A){setHint('המסלול לא נכנס בשטח קטן יותר.',true);return}}
+  if(dir<0&&pts.length){const b=bbox(pts);if(Math.max(b.x1-b.x0,b.y1-b.y0)+20>A){setHint(T('noSmaller'),true);return}}
   snapshot();setArea(A);saveDraft();renderEditor();
 }
 $('zoomOut').addEventListener('click',()=>zoom(-1));
@@ -904,8 +1135,8 @@ $('zoomIn').addEventListener('click',()=>zoom(1));
 $('mCopy').addEventListener('click',()=>{
   const t=edTrack();if(!t.lens.length)return;const c=manualCode(t);
   pushRecent(c);
-  const fallback=()=>{const r=document.createRange();r.selectNodeContents($('mCode'));const s=getSelection();s.removeAllRanges();s.addRange(r);note('הקוד מסומן, אפשר להעתיק')};
-  try{navigator.clipboard.writeText(c).then(()=>note('הקוד הועתק'),fallback)}catch(e){fallback()}
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents($('mCode'));const s=getSelection();s.removeAllRanges();s.addRange(r);note(T('selected'))};
+  try{navigator.clipboard.writeText(c).then(()=>note(T('copied')),fallback)}catch(e){fallback()}
 });
 $('toManual').addEventListener('click',()=>{if(current)loadManual(manualCode(current))});
 
@@ -922,8 +1153,8 @@ $('loadbtn').addEventListener('click',()=>show($('codein').value));
 $('codein').addEventListener('keydown',e=>{if(e.key==='Enter')show($('codein').value)});
 $('copybtn').addEventListener('click',()=>{
   if(!current)return;const c=codeOf(current);
-  const done=()=>{note('הקוד הועתק')};
-  const fallback=()=>{$('codein').value=c;$('codein').select();note('הקוד מסומן בתיבה, אפשר להעתיק')};
+  const done=()=>{note(T('copied'))};
+  const fallback=()=>{$('codein').value=c;$('codein').select();note(T('selectedBox'))};
   try{navigator.clipboard.writeText(c).then(done,fallback)}catch(e){fallback()}
 });
 ['sBefore','sAfter','sStart','sGap','sLeg','sSep','sCross'].forEach(id=>$(id).addEventListener('change',()=>{if(current)show(codeOf(current));if(mode==='manual')renderEditor()}));
@@ -938,8 +1169,22 @@ try{
     if(c.length){ed.start=c[0].slice();for(let i=1;i<c.length;i++){const dx=c[i][0]-c[i-1][0],dy=c[i][1]-c[i-1][1];ed.legs.push({h:((Math.round(Math.atan2(dx,-dy)/(Math.PI/4))%8)+8)%8,L:Math.round(Math.hypot(dx,dy))})}}
   }
 }catch(e){}
-show('IGP2-48213');
-if(load('trk-mode')==='manual')setMode('manual');
+// switch language: static text, direction, and everything drawn with words
+function applyLang(){
+  document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=T(e.dataset.i18n)});
+  document.querySelectorAll('[data-i18n-aria]').forEach(e=>e.setAttribute('aria-label',T(e.dataset.i18nAria)));
+  const w=document.querySelector('.wrap');w.dir=LANGS[lang].dir;w.lang=lang;document.documentElement.lang=lang;
+  document.title=T('title');edSvg.setAttribute('aria-label',T('edAria'));$('lang').value=lang;
+}
+$('lang').addEventListener('change',()=>{
+  lang=LANGS[$('lang').value]?$('lang').value:'he';store('trk-lang',lang);applyLang();note('');
+  if(current){$('svgbox').replaceChildren(draw(current));$('rows').innerHTML=rowsFor(current);
+    $('summary').textContent=`${LEVELS[current.level].name} · `+T('stats',current.steps,current.lens.length,current.turns.length,current.objs.length)+extrasText(current)}
+  renderEditor();
+});
+applyLang();
+// every visit opens on a random IGP 1 track
+setLevel('IGP1');setCount(defObjs('IGP1'));fresh();
 })();
 </script>
 
