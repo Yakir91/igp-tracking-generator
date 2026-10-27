@@ -129,7 +129,14 @@ summary{cursor:pointer;font-weight:600}
 .mcode .code{overflow-wrap:anywhere;min-width:0;flex:1 1 160px}
 .toprow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 #tabs button{min-width:0;padding:9px 14px}
-.langpick{font:600 15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);cursor:pointer}
+.langmenu{position:relative}
+.langbtn,.langopt{display:flex;align-items:center;gap:8px;font:600 15px var(--f-body);color:var(--ink);cursor:pointer}
+.langbtn{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.langbtn .caret{font-size:11px;color:var(--muted)}
+.flag{width:24px;height:16px;flex:none;border-radius:2px;box-shadow:0 0 0 1px var(--line);display:block}
+.langlist{position:absolute;top:calc(100% + 4px);inset-inline-end:0;z-index:20;margin:0;padding:4px;list-style:none;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.15);min-width:150px}
+.langopt{width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;text-align:start}
+.langopt:hover,.langopt[aria-selected="true"]{background:var(--bg)}
 #levels{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 380px;max-width:520px}
 #levels button{min-width:0;padding:10px 4px}
 #tool{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 100%;gap:1px;background:var(--line)}
@@ -151,11 +158,39 @@ summary{cursor:pointer;font-weight:600}
       <button id="tabRandom" data-mode="random" aria-pressed="true" data-i18n="tabRandom">מסלול אקראי</button>
       <button id="tabManual" data-mode="manual" aria-pressed="false" data-i18n="tabManual">ציור ידני</button>
     </div>
-    <select id="lang" class="langpick" aria-label="שפה" data-i18n-aria="aLang">
-      <option value="he">עב</option>
-      <option value="en">EN</option>
-      <option value="de">DE</option>
-    </select>
+    <div class="langmenu">
+      <button class="langbtn" id="langBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="שפה" data-i18n-aria="aLang">
+        <svg class="flag" id="langFlag" aria-hidden="true"><use href="#flag-he"/></svg><span id="langCode">עב</span><span class="caret" aria-hidden="true">▾</span>
+      </button>
+      <ul class="langlist" id="langList" role="listbox" hidden>
+        <li><button class="langopt" role="option" data-lang="he"><svg class="flag" aria-hidden="true"><use href="#flag-he"/></svg>עברית</button></li>
+        <li><button class="langopt" role="option" data-lang="en"><svg class="flag" aria-hidden="true"><use href="#flag-en"/></svg>English</button></li>
+        <li><button class="langopt" role="option" data-lang="de"><svg class="flag" aria-hidden="true"><use href="#flag-de"/></svg>Deutsch</button></li>
+      </ul>
+    </div>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="gbS"><path d="M0,0v30h60V0z"/></clipPath>
+        <clipPath id="gbT"><path d="M30,15h30v15zv15H0zH0V0zV0h30z"/></clipPath>
+      </defs>
+      <symbol id="flag-he" viewBox="0 0 220 160" preserveAspectRatio="none">
+        <rect width="220" height="160" fill="#fff"/>
+        <rect y="15" width="220" height="25" fill="#0038b8"/><rect y="120" width="220" height="25" fill="#0038b8"/>
+        <path d="M110,52 134.2,94 85.8,94z M110,108 85.8,66 134.2,66z" fill="none" stroke="#0038b8" stroke-width="5.5"/>
+      </symbol>
+      <symbol id="flag-en" viewBox="0 0 60 30" preserveAspectRatio="none">
+        <g clip-path="url(#gbS)">
+          <path d="M0,0v30h60V0z" fill="#012169"/>
+          <path d="M0,0 60,30M60,0 0,30" stroke="#fff" stroke-width="6"/>
+          <path d="M0,0 60,30M60,0 0,30" clip-path="url(#gbT)" stroke="#C8102E" stroke-width="4"/>
+          <path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/>
+          <path d="M30,0v30M0,15h60" stroke="#C8102E" stroke-width="6"/>
+        </g>
+      </symbol>
+      <symbol id="flag-de" viewBox="0 0 5 3" preserveAspectRatio="none">
+        <rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#DD0000"/><rect y="2" width="5" height="1" fill="#FFCE00"/>
+      </symbol>
+    </svg>
   </div>
 
   <div class="bar">
@@ -505,7 +540,7 @@ de:{
   pNearTurn:(d,sh,m)=>`verläuft ${d} Schritte von ${sh?'dem spitzen Winkel':'einem Winkelpunkt'} (mindestens ${m})`,
   pOneLeg:'kreuzt nur einen Schenkel (mindestens zwei sind nötig)',pNone:'kreuzt die Fährte nicht'
 }};
-const LANGS={he:{dir:'rtl'},en:{dir:'ltr'},de:{dir:'ltr'}};
+const LANGS={he:{dir:'rtl',code:'עב'},en:{dir:'ltr',code:'EN'},de:{dir:'ltr',code:'DE'}};
 let lang=(()=>{try{const l=localStorage.getItem('trk-lang');return LANGS[l]?l:'he'}catch(e){return'he'}})();
 function T(k,...a){const d=I18N[lang]||I18N.he;const v=k in d?d[k]:I18N.he[k];return typeof v==='function'?v(...a):v}
 let level='IGP1', current=null, objCount=3;
@@ -1174,14 +1209,22 @@ function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=T(e.dataset.i18n)});
   document.querySelectorAll('[data-i18n-aria]').forEach(e=>e.setAttribute('aria-label',T(e.dataset.i18nAria)));
   const w=document.querySelector('.wrap');w.dir=LANGS[lang].dir;w.lang=lang;document.documentElement.lang=lang;
-  document.title=T('title');edSvg.setAttribute('aria-label',T('edAria'));$('lang').value=lang;
+  document.title=T('title');edSvg.setAttribute('aria-label',T('edAria'));
+  $('langFlag').querySelector('use').setAttribute('href','#flag-'+lang);$('langCode').textContent=LANGS[lang].code;
+  document.querySelectorAll('.langopt').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.lang===lang)));
 }
-$('lang').addEventListener('change',()=>{
-  lang=LANGS[$('lang').value]?$('lang').value:'he';store('trk-lang',lang);applyLang();note('');
+// language menu: flag button opens a short list; Escape or a tap elsewhere closes it
+function langMenu(open){$('langList').hidden=!open;$('langBtn').setAttribute('aria-expanded',String(open))}
+$('langBtn').addEventListener('click',e=>{e.stopPropagation();langMenu($('langList').hidden)});
+document.addEventListener('click',e=>{if(!e.target.closest('.langmenu'))langMenu(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('langList').hidden){langMenu(false);$('langBtn').focus()}});
+document.querySelectorAll('.langopt').forEach(b=>b.addEventListener('click',()=>{langMenu(false);setLang(b.dataset.lang)}));
+function setLang(l){
+  lang=LANGS[l]?l:'he';store('trk-lang',lang);applyLang();note('');
   if(current){$('svgbox').replaceChildren(draw(current));$('rows').innerHTML=rowsFor(current);
     $('summary').textContent=`${LEVELS[current.level].name} · `+T('stats',current.steps,current.lens.length,current.turns.length,current.objs.length)+extrasText(current)}
   renderEditor();
-});
+}
 applyLang();
 // every visit opens on a random IGP 1 track
 setLevel('IGP1');setCount(defObjs('IGP1'));fresh();
