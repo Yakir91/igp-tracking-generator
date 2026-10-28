@@ -403,8 +403,9 @@ he:{
   pNearTurn:(d,sh,m)=>`עוברים ${d} צעדים מ${sh?'הפנייה החדה':'נקודת פנייה'} (מינימום ${m})`,
   pOneLeg:'חוצים רק צלע אחת (צריך לפחות שתיים)',pNone:'לא חוצים את המסלול',
   toolArc:'קשת',
-  hintArc:'גע בצלע כדי להפוך אותה לקשת: חצי עיגול של 120 צעדים (רדיוס כ-38 צעדים, בערך 30 מטר). נגיעה בקשת מחזירה אותה לקו ישר.',
-  hintArcEmpty:'קודם צייר מסלול, ואז בחר איזו צלע תהיה קשת.',
+  hintArc:'גע במפה מצד שמאל או מצד ימין לסוף המסלול, וקשת של 120 צעדים (רדיוס כ-38 צעדים, בערך 30 מטר) תתווסף מסוף הצלע לצד הזה. נגיעה בקשת קיימת מוחקת אותה.',
+  hintArcEmpty:'קודם צייר צלע, ואז הקשת תתווסף מסופה.',
+  arcAdded:'הקשת נוספה. המשך לצייר מסוף הקשת.',
   hintHasArc:'במסלול יש כבר קשת. גע בה כדי להחזיר אותה לקו ישר, ואז בחר צלע אחרת.',
   hintArcSharp:'צלע שצמודה לפנייה חדה לא יכולה להיות קשת: הכניסה לקשת והיציאה ממנה הן פניות של 90°.',
   hintSharpArc:'פנייה שצמודה לקשת נשארת 90°.',
@@ -494,8 +495,9 @@ en:{
   pNearTurn:(d,sh,m)=>`passes ${d} steps from ${sh?'the sharp turn':'a turn point'} (minimum ${m})`,
   pOneLeg:'crosses only one leg (at least two are required)',pNone:'does not cross the track',
   toolArc:'Arc',
-  hintArc:'Tap a leg to turn it into an arc: a 120-step semicircle (radius about 38 steps, roughly 30 m). Tap the arc again to make it straight.',
-  hintArcEmpty:'Draw a track first, then choose which leg is the arc.',
+  hintArc:'Tap the map to the left or right of the track end, and a 120-step arc (radius about 38 steps, roughly 30 m) is added from the end of the leg toward that side. Tap an existing arc to delete it.',
+  hintArcEmpty:'Draw a leg first; the arc is added at its end.',
+  arcAdded:'Arc added. Keep drawing from the end of the arc.',
   hintHasArc:'The track already has an arc. Tap it to make it straight, then choose another leg.',
   hintArcSharp:'A leg next to a sharp turn cannot be the arc: the turns into and out of the arc are 90°.',
   hintSharpArc:'A turn next to the arc stays at 90°.',
@@ -585,8 +587,9 @@ de:{
   pNearTurn:(d,sh,m)=>`verläuft ${d} Schritte von ${sh?'dem spitzen Winkel':'einem Winkelpunkt'} (mindestens ${m})`,
   pOneLeg:'kreuzt nur einen Schenkel (mindestens zwei sind nötig)',pNone:'kreuzt die Fährte nicht',
   toolArc:'Bogen',
-  hintArc:'Tippe auf einen Schenkel, um daraus einen Bogen zu machen: ein Halbkreis von 120 Schritten (Radius ca. 38 Schritte, etwa 30 m). Nochmal tippen macht ihn wieder gerade.',
-  hintArcEmpty:'Zeichne zuerst eine Fährte und wähle dann den Schenkel für den Bogen.',
+  hintArc:'Tippe links oder rechts neben das Fährtenende: Ein Bogen von 120 Schritten (Radius ca. 38 Schritte, etwa 30 m) wird am Ende des Schenkels zu dieser Seite angefügt. Tippe auf einen Bogen, um ihn zu löschen.',
+  hintArcEmpty:'Zeichne zuerst einen Schenkel; der Bogen wird an seinem Ende angefügt.',
+  arcAdded:'Bogen angefügt. Zeichne vom Ende des Bogens weiter.',
   hintHasArc:'Die Fährte hat schon einen Bogen. Tippe darauf, um ihn gerade zu machen, und wähle dann einen anderen Schenkel.',
   hintArcSharp:'Ein Schenkel neben einem spitzen Winkel kann kein Bogen sein: Ein- und Ausgang des Bogens sind 90°-Winkel.',
   hintSharpArc:'Ein Winkel am Bogen bleibt bei 90°.',
@@ -1064,10 +1067,10 @@ function renderEditor(){
   drawInto(edG,t,EB);
   el('rect',{x:0,y:0,width:AREA,height:AREA,class:'areaedge','vector-effect':'non-scaling-stroke'},edG);
   if(!ed.start)el('text',{x:AREA/2,y:AREA/2,'text-anchor':'middle','font-size':ES*1.4,class:'mut'},edG,T('tapFlag'));
-  else if(tool==='draw'||tool==='acute'){
+  else if(tool==='draw'||tool==='acute'||tool==='arc'){
     const cs=edCorners();
-    if(tool==='draw'){const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG)}
-    for(let i=1;i<cs.length-1;i++)el('circle',{cx:cs[i][0],cy:cs[i][1],r:ES*(cornerDrag&&cornerDrag.i===i?1.3:1),class:'endh','vector-effect':'non-scaling-stroke'},edG);
+    if(tool==='draw'||tool==='arc'){const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG)}
+    if(tool!=='arc')for(let i=1;i<cs.length-1;i++)el('circle',{cx:cs[i][0],cy:cs[i][1],r:ES*(cornerDrag&&cornerDrag.i===i?1.3:1),class:'endh','vector-effect':'non-scaling-stroke'},edG);
   }
   edSvg.classList.toggle('objmode',tool==='obj'||tool==='acute'||tool==='arc');
   if(!dragging&&!cornerDrag&&!crossDraft)setHint(defaultHint());
@@ -1231,22 +1234,25 @@ function moveCorner(q){
 }
 
 // Turn a straight leg into the semicircle (or back). The turns into and out of it stay 90°.
+// Arc tool: a tap adds the semicircle at the end of the drawn track, bulging to the side that was tapped
+// (90° turn in, half circle, 90° turn out, so drawing continues in the same direction).
+// A tap on an existing arc removes it.
 function toggleArc(p){
   const t=edTrack();
   if(!t.lens.length){setHint(T('hintArcEmpty'),true);return}
-  const b=nearestOnTrack(t,p);
-  if(b.dist>tol(26,15)){setHint(T('hintTouchLeg'),true);return}
-  const i=b.leg,l=ed.legs[i];
-  if(l.arc){snapshot();ed.legs[i]={h:l.h,L:l.prevL||l.L}}
-  else{
-    if(arcIdx()>=0){setHint(T('hintHasArc'),true);return}
-    const tin=i>0?turnAt(i):0,tout=i<ed.legs.length-1?turnAt(i+1):0;
-    if(Math.abs(tin)===3||Math.abs(tout)===3){setHint(T('hintArcSharp'),true);return}
-    // bend toward the side the track was turning to, so the arc bulges away from the rest of the track
-    const s=tout?Math.sign(tout):tin?-Math.sign(tin):1;
-    snapshot();ed.legs[i]={h:l.h,L:ARC_L,arc:true,s,prevL:l.L};
+  const b=nearestOnTrack(t,p),ai=arcIdx();
+  if(ai>=0&&b.leg===ai&&b.dist<=tol(26,15)){
+    snapshot();ed.legs.splice(ai,1);
+    // the legs on both sides of a removed bump point the same way: join them into one leg
+    const a=ed.legs[ai-1],c=ed.legs[ai];
+    if(a&&c&&!a.arc&&!c.arc&&a.h===c.h){a.L+=c.L;ed.legs.splice(ai,1)}
+    fitIfNeeded();saveDraft();renderEditor();return;
   }
-  fitIfNeeded();saveDraft();renderEditor();
+  if(ai>=0){setHint(T('hintHasArc'),true);return}
+  const end=endPt(),H=lastH(),u=DIRS[H],side=crs(u,[p.x-end[0],p.y-end[1]])<0?-1:1,e=2*side;
+  snapshot();ed.legs.push({h:(H+e+8)%8,L:ARC_L,arc:true,s:-side});
+  fitIfNeeded();saveDraft();tool='draw';renderEditor(); // straight back to drawing, from the end of the arc
+  setHint(T('arcAdded'));
 }
 
 function crossDraftTo(p){
