@@ -415,6 +415,7 @@ he:{
   extraArc:n=>n===1?'קשת':`${n} קשתות`,
   noArcHere:'ברמה הזו אין קשת',oneArc:'יש קשת אחת (חצי עיגול)',manyArcs:n=>`${n} קשתות (צריך אחת בלבד)`,noArc:'אין קשת (צריך אחת)',
   arcTurns:'הכניסה לקשת והיציאה ממנה צריכות להיות פניות של 90°',
+  arcEarly:(d,m)=>`הקשת מתחילה ${d} צעדים מהדגל (מינימום ${m})`,
   lastNotSharp:'הפנייה האחרונה צריכה להיות פנייה חדה',
   sharpOk:n=>n===1?'יש פנייה חדה אחת (זווית 45°)':`יש ${n} פניות חדות (זווית 45°)`,
   wrongSharp:(n,need)=>`${n} פניות חדות (צריך ${need})`,
@@ -505,6 +506,7 @@ en:{
   extraArc:n=>n===1?'arc':`${n} arcs`,
   noArcHere:'This level has no arc',oneArc:'One arc (semicircle)',manyArcs:n=>`${n} arcs (only one allowed)`,noArc:'No arc (one is required)',
   arcTurns:'The turns into and out of the arc must be 90°',
+  arcEarly:(d,m)=>`The arc starts ${d} steps from the flag (minimum ${m})`,
   lastNotSharp:'The last turn must be a sharp turn',
   sharpOk:n=>n===1?'One sharp turn (45° angle)':`${n} sharp turns (45° angle)`,
   wrongSharp:(n,need)=>`${n} sharp turns (${need} required)`,
@@ -595,6 +597,7 @@ de:{
   extraArc:n=>n===1?'Bogen':`${n} Bögen`,
   noArcHere:'Diese Stufe hat keinen Bogen',oneArc:'Ein Bogen (Halbkreis)',manyArcs:n=>`${n} Bögen (nur einer erlaubt)`,noArc:'Kein Bogen (einer ist nötig)',
   arcTurns:'Ein- und Ausgang des Bogens müssen 90°-Winkel sein',
+  arcEarly:(d,m)=>`Der Bogen beginnt ${d} Schritte nach dem Abgang (mindestens ${m})`,
   lastNotSharp:'Der letzte Winkel muss ein spitzer Winkel sein',
   sharpOk:n=>n===1?'Ein spitzer Winkel (45°)':`${n} spitze Winkel (45°)`,
   wrongSharp:(n,need)=>`${n} spitze Winkel (${need} nötig)`,
@@ -621,7 +624,7 @@ function segX(a1,a2,b1,b2){const r=sub(a2,a1),s=sub(b2,b1),den=crs(r,s);if(Math.
 function segDist(a,b){if(segX(a[0],a[1],b[0],b[1]))return 0;return Math.min(ptSeg(a[0],b[0],b[1]),ptSeg(a[1],b[0],b[1]),ptSeg(b[0],a[0],a[1]),ptSeg(b[1],a[0],a[1]))}
 // A leg is {h, L}: straight, heading h; or {h, L, arc:true, s}: a semicircle of length L that starts with
 // heading h, bends right (s=1) or left (s=-1) and leaves in the opposite direction.
-const ARC_L=120, ARC_N=24; // 120 steps along the arc = radius ≈ 38 steps ≈ 30 m
+const ARC_L=120, ARC_N=24, ARC_START=100; // 120 steps along the arc = radius ≈ 38 steps ≈ 30 m
 const outHead=l=>l.arc?(l.h+4)%8:l.h;
 function legPath(p,l){
   const u=DIRS[l.h];
@@ -655,9 +658,10 @@ function tryTrack(rng,cfg,S){
   let units=w.map(x=>m+Math.floor(free*x/sw));let rest=U-units.reduce((a,b)=>a+b,0);
   while(rest-->0)units[Math.floor(rng()*ns)]++;
   const lens=units.map(u=>u*10);
-  // FH3: one leg (any but the last; the first is allowed) is the semicircle, entered and left with 90° turns
-  const arcAt=cfg.arc?Math.floor(rng()*(n-1)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
-  if(arcAt>=0)lens.splice(arcAt,0,ARC_L);
+  // FH3: one leg (not the last) is the semicircle, entered and left with 90° turns, starting at least
+  // ARC_START steps from the flag. Right after the first leg it reads as a bump on the first leg.
+  const arcAt=cfg.arc?1+Math.floor(rng()*(n-2)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
+  if(arcAt>=0){if(lens.slice(0,arcAt).reduce((a,b)=>a+b,0)<ARC_START)return null;lens.splice(arcAt,0,ARC_L)}
   // sharp turns: FH2 always uses the last turn; FH3 picks any turns that do not touch the arc
   const sharpAt=new Set();
   if(cfg.sharpLast)sharpAt.add(n-1);
@@ -1088,6 +1092,7 @@ function checksFor(t){
   const arcs=t.legs.filter(l=>l.arc).length,needArc=L.arc||0;
   if(needArc||arcs)out.push([arcs===needArc?'ok':'bad',!needArc?T('noArcHere'):arcs===needArc?T('oneArc'):arcs?T('manyArcs',arcs):T('noArc')]);
   t.legs.forEach((l,i)=>{if(l.arc&&((i>0&&Math.abs(t.turns[i-1])!==2)||(i<n-1&&Math.abs(t.turns[i])!==2)))out.push(['bad',T('arcTurns')])});
+  {let st=0;t.legs.forEach((l,i)=>{if(l.arc&&st<ARC_START)out.push(['bad',T('arcEarly',st,ARC_START)]);st+=l.L})}
   const cr=t.cross||[];
   if(L.cross&&!cr.length)out.push(['bad',T('needCross')]);
   if(!L.cross&&cr.length)out.push(['bad',T('noCrossHere')]);
