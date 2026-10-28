@@ -655,8 +655,8 @@ function tryTrack(rng,cfg,S){
   let units=w.map(x=>m+Math.floor(free*x/sw));let rest=U-units.reduce((a,b)=>a+b,0);
   while(rest-->0)units[Math.floor(rng()*ns)]++;
   const lens=units.map(u=>u*10);
-  // FH3: one leg (not the first or last) is the semicircle, entered and left with 90° turns
-  const arcAt=cfg.arc?1+Math.floor(rng()*(n-2)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
+  // FH3: one leg (any but the last; the first is allowed) is the semicircle, entered and left with 90° turns
+  const arcAt=cfg.arc?Math.floor(rng()*(n-1)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
   if(arcAt>=0)lens.splice(arcAt,0,ARC_L);
   // sharp turns: FH2 always uses the last turn; FH3 picks any turns that do not touch the arc
   const sharpAt=new Set();
