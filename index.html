@@ -320,8 +320,8 @@ const LEVELS={
   FH1:{name:'FH1',steps:800,legs:5},
   // FH2: the sharp turn is always the last turn; the first object lies at least 100 steps from the flag
   FH2:{name:'FH2',steps:1200,legs:7,acute:1,cross:1,objs:4,firstObj:100,sharpLast:1},
-  // FH3: like FH2, plus a second sharp turn and one leg laid as a semicircle (radius about 30 m)
-  FH3:{name:'FH3',steps:1800,legs:8,acute:2,cross:1,objs:7,firstObj:100,sharpLast:1,arc:1}
+  // FH3: two sharp turns anywhere (even one right after the other) and one leg laid as a semicircle (radius about 30 m)
+  FH3:{name:'FH3',steps:1800,legs:8,acute:2,cross:1,objs:7,firstObj:100,arc:1}
 };
 // 8 headings, 45° apart, clockwise from "up" (screen y grows downward).
 // A 90° turn changes the heading by 2, the sharp 45° turn by 3.
@@ -655,13 +655,14 @@ function tryTrack(rng,cfg,S){
   let units=w.map(x=>m+Math.floor(free*x/sw));let rest=U-units.reduce((a,b)=>a+b,0);
   while(rest-->0)units[Math.floor(rng()*ns)]++;
   const lens=units.map(u=>u*10);
-  // FH3: one leg (not the first, not the last two) is the semicircle, entered and left with 90° turns
-  const arcAt=cfg.arc?1+Math.floor(rng()*(n-3)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
+  // FH3: one leg (not the first or last) is the semicircle, entered and left with 90° turns
+  const arcAt=cfg.arc?1+Math.floor(rng()*(n-2)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
   if(arcAt>=0)lens.splice(arcAt,0,ARC_L);
-  // sharp turns: always the last turn; FH3 adds one more that does not touch the arc
+  // sharp turns: FH2 always uses the last turn; FH3 picks any turns that do not touch the arc
   const sharpAt=new Set();
-  if(cfg.acute)sharpAt.add(n-1);
-  if(cfg.acute>1){const opts=[];for(let i=1;i<n-1;i++)if(i!==arcAt&&i!==arcAt+1)opts.push(i);sharpAt.add(opts[Math.floor(rng()*opts.length)])}
+  if(cfg.sharpLast)sharpAt.add(n-1);
+  const opts=[];for(let i=1;i<n;i++)if(i!==arcAt&&i!==arcAt+1&&!sharpAt.has(i))opts.push(i);
+  while(sharpAt.size<(cfg.acute||0)&&opts.length)sharpAt.add(opts.splice(Math.floor(rng()*opts.length),1)[0]);
   const first=Math.max(S.start,cfg.firstObj||0);
   let h=0;const turns=[],heads=[],legs=[];
   for(let i=0;i<n;i++){
