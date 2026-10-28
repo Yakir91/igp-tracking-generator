@@ -72,6 +72,7 @@ td.n{font-family:var(--f-mono);font-size:14px;white-space:nowrap}
 .pip.obj{background:var(--obj);transform:rotate(45deg) scale(.8);border-radius:2px}
 .pip.turn{border:2px solid var(--track);border-radius:50%}
 .pip.turn.acute{background:var(--track)}
+.pip.arc{width:16px;height:9px;border:2.5px solid var(--track);border-bottom:0;border-radius:9px 9px 0 0}
 .pip.cross{height:0;width:16px;border-top:3px dashed var(--cross)}
 
 .tools{display:flex;flex-direction:column;gap:12px}
@@ -142,7 +143,7 @@ summary{cursor:pointer;font-weight:600}
 #tool{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:1 1 100%;gap:1px;background:var(--line)}
 #tool button{min-width:0;padding:10px 6px;line-height:1.2;font-size:15px;border:0;background:var(--paper)}
 #tool button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
-@media (max-width:560px){#tool{grid-auto-flow:row;grid-template-columns:1fr 1fr}}
+@media (max-width:560px){#tool{grid-auto-flow:row;grid-template-columns:1fr 1fr}#tool button:nth-child(odd of :not([hidden])):nth-last-child(1 of :not([hidden])){grid-column:span 2}}
 .linkbtn{font:600 14px var(--f-body);background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
 </style>
 </head>
@@ -200,6 +201,7 @@ summary{cursor:pointer;font-weight:600}
       <button id="lv3" data-lv="IGP3" aria-pressed="false">IGP 3</button>
       <button id="lvfh1" data-lv="FH1" aria-pressed="false">FH1</button>
       <button id="lvfh2" data-lv="FH2" aria-pressed="false">FH2</button>
+      <button id="lvfh3" data-lv="FH3" aria-pressed="false">FH3</button>
     </div>
     <span class="bar" id="randomCtl">
     <div class="stepper" role="group" aria-label="מספר חפצים" data-i18n-aria="aObjs">
@@ -222,6 +224,7 @@ summary{cursor:pointer;font-weight:600}
           <button id="toolObj" data-tool="obj" aria-pressed="false" data-i18n="toolObj">הנחת חפצים</button>
           <button id="toolAcute" data-tool="acute" aria-pressed="false" hidden data-i18n="toolAcute">פנייה חדה</button>
           <button id="toolCross" data-tool="cross" aria-pressed="false" hidden data-i18n="toolCross">עקבות חוצות</button>
+          <button id="toolArc" data-tool="arc" aria-pressed="false" hidden data-i18n="toolArc">קשת</button>
         </div>
         <div class="edbtns">
           <button class="btn ghost" id="undo" data-i18n="undo">בטל פעולה</button>
@@ -316,7 +319,9 @@ const LEVELS={
   IGP3:{name:'IGP 3',steps:600,legs:5},
   FH1:{name:'FH1',steps:800,legs:5},
   // FH2: the sharp turn is always the last turn; the first object lies at least 100 steps from the flag
-  FH2:{name:'FH2',steps:1200,legs:7,acute:1,cross:1,objs:4,firstObj:100}
+  FH2:{name:'FH2',steps:1200,legs:7,acute:1,cross:1,objs:4,firstObj:100,sharpLast:1},
+  // FH3: like FH2, plus a second sharp turn and one leg laid as a semicircle (radius about 30 m)
+  FH3:{name:'FH3',steps:1800,legs:8,acute:2,cross:1,objs:7,firstObj:100,sharpLast:1,arc:1}
 };
 // 8 headings, 45° apart, clockwise from "up" (screen y grows downward).
 // A 90° turn changes the heading by 2, the sharp 45° turn by 3.
@@ -329,7 +334,7 @@ const $=id=>document.getElementById(id);
 const I18N={
 he:{
   title:'מחולל מסלולי גישוש',
-  intro:'מסלול לפי רמה (IGP 1–3, FH1, FH2): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. ב-FH2 יש גם פנייה חדה של 45° ועקבות חוצות. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.',
+  intro:'מסלול לפי רמה (IGP 1–3, FH1–FH3): קווים ישרים, פניות של 90°, חפצים לאורך המסלול והחפץ האחרון בסוף. ב-FH2 וב-FH3 יש גם פניות חדות של 45° ועקבות חוצות, וב-FH3 גם קשת. אפשר לקבל מסלול אקראי או לצייר אחד בעצמך.',
   tabRandom:'מסלול אקראי',tabManual:'ציור ידני',objLbl:'חפצים',gen:'מסלול חדש',
   toolDraw:'ציור מסלול',toolObj:'הנחת חפצים',toolAcute:'פנייה חדה',toolCross:'עקבות חוצות',
   undo:'בטל פעולה',clear:'נקה',areaLbl:'שטח',
@@ -338,7 +343,7 @@ he:{
   codeLbl:'קוד:',toManual:'ערוך ידנית',hLoad:'טעינת מסלול לפי קוד',loadBtn:'טען',
   settings:'הגדרות מרחקים',
   sBefore:'מינימום צעדים בין חפץ לפנייה שאחריו',sAfter:'מינימום צעדים אחרי פנייה עד חפץ',sStart:'מינימום צעדים מהדגל עד חפץ ראשון',
-  sGap:'מינימום צעדים בין חפצים',sLeg:'אורך צלע מינימלי',sSep:'מרחק מינימלי בין צלעות לא סמוכות',sCross:'מינימום צעדים בין עקבות חוצות לפנייה (FH2)',
+  sGap:'מינימום צעדים בין חפצים',sLeg:'אורך צלע מינימלי',sSep:'מרחק מינימלי בין צלעות לא סמוכות',sCross:'מינימום צעדים בין עקבות חוצות לפנייה (FH2, FH3)',
   setNote:'קוד מסלול משחזר את אותו מסלול כל עוד ההגדרות זהות. המפה מצוירת עם כיוון ההתחלה למעלה; קו רשת דק = 10 צעדים, קו עבה = 50 צעדים.',
   aTabs:'סוג מסלול',aLevels:'רמה',aObjs:'מספר חפצים',aObjMinus:'הסר חפץ',aObjPlus:'הוסף חפץ',aEditor:'ציור מסלול',aTool:'כלי',
   aArea:'גודל המפה',aZoomOut:'מפה קטנה יותר (התקרב)',aZoomIn:'מפה גדולה יותר (התרחק)',aMap:'מפת המסלול',aCodeIn:'קוד מסלול',aLang:'שפה',
@@ -396,11 +401,30 @@ he:{
   pObj:(d,k,m)=>`חוצים ${d} צעדים מחפץ ${k} (מינימום ${m})`,
   pWedge:'חוצים את הפנייה החדה (את שתי הצלעות שלה)',
   pNearTurn:(d,sh,m)=>`עוברים ${d} צעדים מ${sh?'הפנייה החדה':'נקודת פנייה'} (מינימום ${m})`,
-  pOneLeg:'חוצים רק צלע אחת (צריך לפחות שתיים)',pNone:'לא חוצים את המסלול'
+  pOneLeg:'חוצים רק צלע אחת (צריך לפחות שתיים)',pNone:'לא חוצים את המסלול',
+  toolArc:'קשת',
+  hintArc:'גע בצלע כדי להפוך אותה לקשת: חצי עיגול של 120 צעדים (רדיוס כ-38 צעדים, בערך 30 מטר). נגיעה בקשת מחזירה אותה לקו ישר.',
+  hintArcEmpty:'קודם צייר מסלול, ואז בחר איזו צלע תהיה קשת.',
+  hintHasArc:'במסלול יש כבר קשת. גע בה כדי להחזיר אותה לקו ישר, ואז בחר צלע אחרת.',
+  hintArcSharp:'צלע שצמודה לפנייה חדה לא יכולה להיות קשת: הכניסה לקשת והיציאה ממנה הן פניות של 90°.',
+  hintSharpArc:'פנייה שצמודה לקשת נשארת 90°.',
+  hintCornerArc:'נקודה שצמודה לקשת לא נגררת. אפשר לגרור את שאר נקודות הפנייה.',
+  hintTouchLeg:'גע על אחת הצלעות.',
+  arcStart:(r,rad)=>`קשת ${r?'ימינה':'שמאלה'} (חצי עיגול, רדיוס כ-${rad} צעדים)`,
+  arcSub:(i,L)=>`צלע ${i}: ${L} צעדים לאורך הקשת`,
+  extraArc:n=>n===1?'קשת':`${n} קשתות`,
+  noArcHere:'ברמה הזו אין קשת',oneArc:'יש קשת אחת (חצי עיגול)',manyArcs:n=>`${n} קשתות (צריך אחת בלבד)`,noArc:'אין קשת (צריך אחת)',
+  arcTurns:'הכניסה לקשת והיציאה ממנה צריכות להיות פניות של 90°',
+  lastNotSharp:'הפנייה האחרונה צריכה להיות פנייה חדה',
+  sharpOk:n=>n===1?'יש פנייה חדה אחת (זווית 45°)':`יש ${n} פניות חדות (זווית 45°)`,
+  wrongSharp:(n,need)=>`${n} פניות חדות (צריך ${need})`,
+  noSharpN:need=>need===1?'אין פנייה חדה (צריך אחת)':`אין פניות חדות (צריך ${need})`,
+  pTwice:i=>`חוצים את צלע ${i} פעמיים`,
+  pAngle:(i,a,m)=>`חוצים את צלע ${i} בזווית של ${a}° (מינימום ${m}°)`
 },
 en:{
   title:'Tracking Track Generator',
-  intro:'Tracks by level (IGP 1–3, FH1, FH2): straight legs, 90° turns, articles along the track and the last article at the end. FH2 adds a sharp 45° turn and a cross track. Get a random track or draw your own.',
+  intro:'Tracks by level (IGP 1–3, FH1–FH3): straight legs, 90° turns, articles along the track and the last article at the end. FH2 and FH3 add sharp 45° turns and a cross track, and FH3 also has an arc. Get a random track or draw your own.',
   tabRandom:'Random',tabManual:'Draw by hand',objLbl:'Articles',gen:'New track',
   toolDraw:'Draw track',toolObj:'Place articles',toolAcute:'Sharp turn',toolCross:'Cross track',
   undo:'Undo',clear:'Clear',areaLbl:'Area',
@@ -409,7 +433,7 @@ en:{
   codeLbl:'Code:',toManual:'Edit by hand',hLoad:'Load a track by code',loadBtn:'Load',
   settings:'Distance settings',
   sBefore:'Min. steps from an article to the next turn',sAfter:'Min. steps after a turn to an article',sStart:'Min. steps from the flag to the first article',
-  sGap:'Min. steps between articles',sLeg:'Minimum leg length',sSep:'Min. distance between non-adjacent legs',sCross:'Min. steps between a cross track and a turn (FH2)',
+  sGap:'Min. steps between articles',sLeg:'Minimum leg length',sSep:'Min. distance between non-adjacent legs',sCross:'Min. steps between a cross track and a turn (FH2, FH3)',
   setNote:'A track code rebuilds the same track as long as the settings stay the same. The map is drawn with the starting direction pointing up; thin grid line = 10 steps, thick line = 50 steps.',
   aTabs:'Track type',aLevels:'Level',aObjs:'Number of articles',aObjMinus:'Remove an article',aObjPlus:'Add an article',aEditor:'Draw a track',aTool:'Tool',
   aArea:'Map size',aZoomOut:'Smaller area (zoom in)',aZoomIn:'Larger area (zoom out)',aMap:'Track map',aCodeIn:'Track code',aLang:'Language',
@@ -467,11 +491,30 @@ en:{
   pObj:(d,k,m)=>`crosses ${d} steps from article ${k} (minimum ${m})`,
   pWedge:'cuts across the sharp turn (crosses both of its legs)',
   pNearTurn:(d,sh,m)=>`passes ${d} steps from ${sh?'the sharp turn':'a turn point'} (minimum ${m})`,
-  pOneLeg:'crosses only one leg (at least two are required)',pNone:'does not cross the track'
+  pOneLeg:'crosses only one leg (at least two are required)',pNone:'does not cross the track',
+  toolArc:'Arc',
+  hintArc:'Tap a leg to turn it into an arc: a 120-step semicircle (radius about 38 steps, roughly 30 m). Tap the arc again to make it straight.',
+  hintArcEmpty:'Draw a track first, then choose which leg is the arc.',
+  hintHasArc:'The track already has an arc. Tap it to make it straight, then choose another leg.',
+  hintArcSharp:'A leg next to a sharp turn cannot be the arc: the turns into and out of the arc are 90°.',
+  hintSharpArc:'A turn next to the arc stays at 90°.',
+  hintCornerArc:'A point next to the arc cannot be dragged. You can drag the other turn points.',
+  hintTouchLeg:'Tap one of the legs.',
+  arcStart:(r,rad)=>`Arc to the ${r?'right':'left'} (semicircle, radius about ${rad} steps)`,
+  arcSub:(i,L)=>`Leg ${i}: ${L} steps along the arc`,
+  extraArc:n=>n===1?'arc':`${n} arcs`,
+  noArcHere:'This level has no arc',oneArc:'One arc (semicircle)',manyArcs:n=>`${n} arcs (only one allowed)`,noArc:'No arc (one is required)',
+  arcTurns:'The turns into and out of the arc must be 90°',
+  lastNotSharp:'The last turn must be a sharp turn',
+  sharpOk:n=>n===1?'One sharp turn (45° angle)':`${n} sharp turns (45° angle)`,
+  wrongSharp:(n,need)=>`${n} sharp turns (${need} required)`,
+  noSharpN:need=>need===1?'No sharp turn (one is required)':`No sharp turns (${need} required)`,
+  pTwice:i=>`crosses leg ${i} twice`,
+  pAngle:(i,a,m)=>`crosses leg ${i} at ${a}° (minimum ${m}°)`
 },
 de:{
   title:'Fährtengenerator',
-  intro:'Fährten nach Stufe (IGP 1–3, FH1, FH2): gerade Schenkel, rechte Winkel, Gegenstände entlang der Fährte und der letzte Gegenstand am Ende. Bei FH2 kommen ein spitzer Winkel (45°) und eine Verleitungsfährte dazu. Lass dir eine zufällige Fährte erstellen oder zeichne selbst eine.',
+  intro:'Fährten nach Stufe (IGP 1–3, FH1–FH3): gerade Schenkel, rechte Winkel, Gegenstände entlang der Fährte und der letzte Gegenstand am Ende. Bei FH2 und FH3 kommen spitze Winkel (45°) und eine Verleitungsfährte dazu, bei FH3 außerdem ein Bogen. Lass dir eine zufällige Fährte erstellen oder zeichne selbst eine.',
   tabRandom:'Zufällig',tabManual:'Selbst zeichnen',objLbl:'Gegenstände',gen:'Neue Fährte',
   toolDraw:'Fährte zeichnen',toolObj:'Gegenstände',toolAcute:'Spitzer Winkel',toolCross:'Verleitung',
   undo:'Rückgängig',clear:'Löschen',areaLbl:'Fläche',
@@ -480,7 +523,7 @@ de:{
   codeLbl:'Code:',toManual:'Bearbeiten',hLoad:'Fährte per Code laden',loadBtn:'Laden',
   settings:'Abstände einstellen',
   sBefore:'Mindestschritte vom Gegenstand bis zum nächsten Winkel',sAfter:'Mindestschritte nach einem Winkel bis zum Gegenstand',sStart:'Mindestschritte vom Abgang bis zum ersten Gegenstand',
-  sGap:'Mindestschritte zwischen Gegenständen',sLeg:'Mindestlänge eines Schenkels',sSep:'Mindestabstand zwischen nicht benachbarten Schenkeln',sCross:'Mindestschritte zwischen Verleitung und Winkel (FH2)',
+  sGap:'Mindestschritte zwischen Gegenständen',sLeg:'Mindestlänge eines Schenkels',sSep:'Mindestabstand zwischen nicht benachbarten Schenkeln',sCross:'Mindestschritte zwischen Verleitung und Winkel (FH2, FH3)',
   setNote:'Ein Fährtencode erzeugt dieselbe Fährte, solange die Einstellungen gleich bleiben. Die Karte ist mit der Startrichtung nach oben gezeichnet; dünne Linie = 10 Schritte, dicke Linie = 50 Schritte.',
   aTabs:'Fährtenart',aLevels:'Stufe',aObjs:'Anzahl Gegenstände',aObjMinus:'Gegenstand entfernen',aObjPlus:'Gegenstand hinzufügen',aEditor:'Fährte zeichnen',aTool:'Werkzeug',
   aArea:'Kartengröße',aZoomOut:'Kleinere Fläche (heranzoomen)',aZoomIn:'Größere Fläche (herauszoomen)',aMap:'Fährtenkarte',aCodeIn:'Fährtencode',aLang:'Sprache',
@@ -538,7 +581,26 @@ de:{
   pObj:(d,k,m)=>`kreuzt ${d} Schritte von Gegenstand ${k} (mindestens ${m})`,
   pWedge:'schneidet den spitzen Winkel (kreuzt beide Schenkel)',
   pNearTurn:(d,sh,m)=>`verläuft ${d} Schritte von ${sh?'dem spitzen Winkel':'einem Winkelpunkt'} (mindestens ${m})`,
-  pOneLeg:'kreuzt nur einen Schenkel (mindestens zwei sind nötig)',pNone:'kreuzt die Fährte nicht'
+  pOneLeg:'kreuzt nur einen Schenkel (mindestens zwei sind nötig)',pNone:'kreuzt die Fährte nicht',
+  toolArc:'Bogen',
+  hintArc:'Tippe auf einen Schenkel, um daraus einen Bogen zu machen: ein Halbkreis von 120 Schritten (Radius ca. 38 Schritte, etwa 30 m). Nochmal tippen macht ihn wieder gerade.',
+  hintArcEmpty:'Zeichne zuerst eine Fährte und wähle dann den Schenkel für den Bogen.',
+  hintHasArc:'Die Fährte hat schon einen Bogen. Tippe darauf, um ihn gerade zu machen, und wähle dann einen anderen Schenkel.',
+  hintArcSharp:'Ein Schenkel neben einem spitzen Winkel kann kein Bogen sein: Ein- und Ausgang des Bogens sind 90°-Winkel.',
+  hintSharpArc:'Ein Winkel am Bogen bleibt bei 90°.',
+  hintCornerArc:'Ein Punkt am Bogen lässt sich nicht ziehen. Die anderen Winkelpunkte schon.',
+  hintTouchLeg:'Tippe auf einen Schenkel.',
+  arcStart:(r,rad)=>`Bogen nach ${r?'rechts':'links'} (Halbkreis, Radius ca. ${rad} Schritte)`,
+  arcSub:(i,L)=>`Schenkel ${i}: ${L} Schritte entlang des Bogens`,
+  extraArc:n=>n===1?'Bogen':`${n} Bögen`,
+  noArcHere:'Diese Stufe hat keinen Bogen',oneArc:'Ein Bogen (Halbkreis)',manyArcs:n=>`${n} Bögen (nur einer erlaubt)`,noArc:'Kein Bogen (einer ist nötig)',
+  arcTurns:'Ein- und Ausgang des Bogens müssen 90°-Winkel sein',
+  lastNotSharp:'Der letzte Winkel muss ein spitzer Winkel sein',
+  sharpOk:n=>n===1?'Ein spitzer Winkel (45°)':`${n} spitze Winkel (45°)`,
+  wrongSharp:(n,need)=>`${n} spitze Winkel (${need} nötig)`,
+  noSharpN:need=>need===1?'Kein spitzer Winkel (einer ist nötig)':`Keine spitzen Winkel (${need} nötig)`,
+  pTwice:i=>`kreuzt Schenkel ${i} zweimal`,
+  pAngle:(i,a,m)=>`kreuzt Schenkel ${i} im Winkel von ${a}° (mindestens ${m}°)`
 }};
 const LANGS={he:{dir:'rtl',code:'עב'},en:{dir:'ltr',code:'EN'},de:{dir:'ltr',code:'DE'}};
 let lang=(()=>{try{const l=localStorage.getItem('trk-lang');return LANGS[l]?l:'he'}catch(e){return'he'}})();
@@ -557,25 +619,62 @@ function ptSeg(p,a,b){const ab=sub(b,a),L2=dot(ab,ab);let t=L2?dot(sub(p,a),ab)/
 // where segment a1→a2 crosses b1→b2 (fractions along each), or null; parallel segments never "cross"
 function segX(a1,a2,b1,b2){const r=sub(a2,a1),s=sub(b2,b1),den=crs(r,s);if(Math.abs(den)<1e-9)return null;const qp=sub(b1,a1),ta=crs(qp,s)/den,tb=crs(qp,r)/den,e=1e-9;return ta>=-e&&ta<=1+e&&tb>=-e&&tb<=1+e?{ta,tb}:null}
 function segDist(a,b){if(segX(a[0],a[1],b[0],b[1]))return 0;return Math.min(ptSeg(a[0],b[0],b[1]),ptSeg(a[1],b[0],b[1]),ptSeg(b[0],a[0],a[1]),ptSeg(b[1],a[0],a[1]))}
-function cornersOf(start,legs){let p=start.slice();const c=[p.slice()];legs.forEach(l=>{p=[p[0]+DIRS[l.h][0]*l.L,p[1]+DIRS[l.h][1]*l.L];c.push(p.slice())});return c}
+// A leg is {h, L}: straight, heading h; or {h, L, arc:true, s}: a semicircle of length L that starts with
+// heading h, bends right (s=1) or left (s=-1) and leaves in the opposite direction.
+const ARC_L=120, ARC_N=24; // 120 steps along the arc = radius ≈ 38 steps ≈ 30 m
+const outHead=l=>l.arc?(l.h+4)%8:l.h;
+function legPath(p,l){
+  const u=DIRS[l.h];
+  if(!l.arc)return[p.slice(),[p[0]+u[0]*l.L,p[1]+u[1]*l.L]];
+  const r=l.L/Math.PI,c=[p[0]-u[1]*l.s*r,p[1]+u[0]*l.s*r],v=[p[0]-c[0],p[1]-c[1]],out=[];
+  for(let k=0;k<=ARC_N;k++){const a=l.s*Math.PI*k/ARC_N,co=Math.cos(a),si=Math.sin(a);out.push([c[0]+v[0]*co-v[1]*si,c[1]+v[0]*si+v[1]*co])}
+  return out;
+}
+function buildPath(start,legs){let p=start.slice();const pts=[p.slice()],geoms=[];legs.forEach(l=>{const g=legPath(p,l);geoms.push(g);p=g[g.length-1].slice();pts.push(p.slice())});return{pts,geoms}}
+const cornersOf=(start,legs)=>buildPath(start,legs).pts;
+// the straight pieces of a leg, with distances scaled to the leg's real length (an arc is drawn as short chords)
+function subsegs(g,L){const raw=[];let tot=0;for(let k=0;k<g.length-1;k++){const l=Math.hypot(g[k+1][0]-g[k][0],g[k+1][1]-g[k][1]);raw.push(l);tot+=l}
+  const f=tot?L/tot:1;let acc=0;return raw.map((l,k)=>{const s={a:g[k],b:g[k+1],l:l*f,acc};acc+=l*f;return s})}
+function pointAt(g,L,d){const ss=subsegs(g,L);let s=ss[ss.length-1];for(const x of ss)if(d<=x.acc+x.l){s=x;break}
+  const f=s.l?Math.max(0,Math.min(1,(d-s.acc)/s.l)):0,dx=s.b[0]-s.a[0],dy=s.b[1]-s.a[1],dl=Math.hypot(dx,dy)||1;
+  return{p:[s.a[0]+dx*f,s.a[1]+dy*f],dir:[dx/dl,dy/dl]}}
+function legDist(g1,g2){let m=1e9;for(let i=0;i<g1.length-1;i++)for(let j=0;j<g2.length-1;j++){m=Math.min(m,segDist([g1[i],g1[i+1]],[g2[j],g2[j+1]]));if(!m)return 0}return m}
+// closest point of the track to p: which leg, how far, and how many steps from the flag
+function nearestOnTrack(t,p){let best=null,st=0;
+  t.lens.forEach((L,i)=>{subsegs(t.geoms[i],L).forEach(sg=>{
+    const ab=sub(sg.b,sg.a),l2=dot(ab,ab)||1,f=Math.max(0,Math.min(1,dot(sub([p.x,p.y],sg.a),ab)/l2));
+    const dist=Math.hypot(p.x-sg.a[0]-ab[0]*f,p.y-sg.a[1]-ab[1]*f);
+    if(!best||dist<best.dist)best={dist,leg:i,cum:st+sg.acc+f*sg.l};});st+=L;});
+  return best}
 
 /* ---------- random tracks ---------- */
 function tryTrack(rng,cfg,S){
-  const n=cfg.legs,U=cfg.steps/10,m=Math.ceil(S.minLeg/10),free=U-n*m;
+  const n=cfg.legs,arcN=cfg.arc?1:0,ns=n-arcN,U=(cfg.steps-arcN*ARC_L)/10,m=Math.ceil(S.minLeg/10),free=U-ns*m;
   if(free<0)return null;
-  const w=Array.from({length:n},()=>0.3+rng());const sw=w.reduce((a,b)=>a+b,0);
+  const w=Array.from({length:ns},()=>0.3+rng());const sw=w.reduce((a,b)=>a+b,0);
   let units=w.map(x=>m+Math.floor(free*x/sw));let rest=U-units.reduce((a,b)=>a+b,0);
-  while(rest-->0)units[Math.floor(rng()*n)]++;
+  while(rest-->0)units[Math.floor(rng()*ns)]++;
   const lens=units.map(u=>u*10);
-  const acuteAt=cfg.acute?n-1:-1; // the sharp turn is the last one (before the last leg)
+  // FH3: one leg (not the first, not the last two) is the semicircle, entered and left with 90° turns
+  const arcAt=cfg.arc?1+Math.floor(rng()*(n-3)):-1,arcTurn=cfg.arc?(rng()<0.5?1:-1):0;
+  if(arcAt>=0)lens.splice(arcAt,0,ARC_L);
+  // sharp turns: always the last turn; FH3 adds one more that does not touch the arc
+  const sharpAt=new Set();
+  if(cfg.acute)sharpAt.add(n-1);
+  if(cfg.acute>1){const opts=[];for(let i=1;i<n-1;i++)if(i!==arcAt&&i!==arcAt+1)opts.push(i);sharpAt.add(opts[Math.floor(rng()*opts.length)])}
   const first=Math.max(S.start,cfg.firstObj||0);
-  let h=0,p=[0,0];const pts=[p.slice()],turns=[],heads=[0];
+  let h=0;const turns=[],heads=[],legs=[];
   for(let i=0;i<n;i++){
-    if(i>0){const t=rng()<0.5?1:-1,mag=i===acuteAt?3:2;turns.push(t*mag);h=(h+t*mag+8)%8;heads.push(h)}
-    p=[p[0]+DIRS[h][0]*lens[i],p[1]+DIRS[h][1]*lens[i]];pts.push(p.slice());
+    if(i>0){
+      let t,mag=2;
+      if(i===arcAt||i===arcAt+1)t=arcTurn;
+      else{t=rng()<0.5?1:-1;if(sharpAt.has(i))mag=3}
+      turns.push(t*mag);h=(outHead(legs[i-1])+t*mag+8)%8;
+    }
+    heads.push(h);legs.push(i===arcAt?{h,L:lens[i],arc:true,s:-arcTurn}:{h,L:lens[i]});
   }
-  const segs=lens.map((_,i)=>[pts[i],pts[i+1]]);
-  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++)if(segDist(segs[i],segs[j])<S.sep)return null;
+  const {pts,geoms}=buildPath([0,0],legs),outs=legs.map(outHead);
+  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++)if(legDist(geoms[i],geoms[j])<S.sep)return null;
   // objects
   const cand=[];let cum=0;
   lens.forEach((L,i)=>{
@@ -587,7 +686,7 @@ function tryTrack(rng,cfg,S){
   // the default 3 objects go one per leg: the two middle ones need two legs (not the last) with room
   const roomy=new Set(cand.filter(c=>c.leg<n-1).map(c=>c.leg));
   if(roomy.size<Math.min(2,n-1))return null;
-  return{lens,pts,turns,heads,cand};
+  return{lens,pts,geoms,legs,turns,heads,outs,cand};
 }
 
 // Objects are added one at a time, each at a random valid spot. Object k always
@@ -613,19 +712,31 @@ function placeObjects(t,count,S){
 const CROSS_OBJ=30; // objects stay this many steps (along the track) away from a cross track
 const isSharp=(t,k)=>Math.abs(t.turns[k])===3;
 // Where a cross track [x1,y1,x2,y2] crosses the main track, and which rules it breaks.
+const CROSS_ANGLE=60; // a cross track meets the track at 60° or more
 function crossInfo(t,c,S,near=10){
-  const a=[c[0],c[1]],b=[c[2],c[3]],n=t.lens.length,hits=[],probs=[];let st=0;
+  const a=[c[0],c[1]],b=[c[2],c[3]],n=t.lens.length,hits=[],probs=[],cu=sub(b,a),cl=Math.hypot(cu[0],cu[1])||1;let st=0;
   t.lens.forEach((L,i)=>{
-    const p=t.pts[i],q=t.pts[i+1],x=segX(a,b,p,q);
-    if(x){const off=Math.round(x.tb*L);hits.push({leg:i,off,cum:st+off,s:x.ta})}
-    else if(segDist([a,b],[p,q])<near)probs.push(T('pNear',i+1));
+    let crossed=false,minD=1e9;
+    subsegs(t.geoms[i],L).forEach(sg=>{
+      const x=segX(a,b,sg.a,sg.b);
+      if(!x){minD=Math.min(minD,segDist([a,b],[sg.a,sg.b]));return}
+      crossed=true;
+      const off=Math.round(sg.acc+x.tb*sg.l);
+      if(hits.some(q=>q.leg===i&&Math.abs(q.off-off)<=1))return; // the same point, seen from two pieces of an arc
+      const d=sub(sg.b,sg.a),ang=Math.acos(Math.min(1,Math.abs(dot(d,cu))/((Math.hypot(d[0],d[1])||1)*cl)))*180/Math.PI;
+      hits.push({leg:i,off,cum:st+off,s:x.ta,ang:Math.round(ang)});
+    });
+    if(!crossed&&minD<near)probs.push(T('pNear',i+1));
     st+=L;
   });
   hits.sort((x,y)=>x.s-y.s);
+  const per={};hits.forEach(q=>{per[q.leg]=(per[q.leg]||0)+1});
+  Object.keys(per).forEach(k=>{if(per[k]>1)probs.push(T('pTwice',+k+1))});
   hits.forEach(h=>{
     const L=t.lens[h.leg];
     if(h.leg===0)probs.push(T('pFirst'));
     else if(h.leg===n-1)probs.push(T('pLast'));
+    if(h.ang<CROSS_ANGLE)probs.push(T('pAngle',h.leg+1,h.ang,CROSS_ANGLE));
     if(h.leg>0&&h.off<S.cross)probs.push(T('pAfter',h.off,isSharp(t,h.leg-1),S.cross));
     if(h.leg<n-1&&L-h.off<S.cross)probs.push(T('pBefore',L-h.off,isSharp(t,h.leg),S.cross));
     (t.objs||[]).forEach((o,k)=>{const d=Math.abs(o.cum-h.cum);if(d<CROSS_OBJ)probs.push(T('pObj',d,k+1,CROSS_OBJ))});
@@ -643,7 +754,7 @@ function crossInfo(t,c,S,near=10){
 
 // One straight cross track that crosses two different legs, away from turns and from the first/last leg.
 function makeCross(t,S,rng){
-  const xs=t.pts.map(p=>p[0]),ys=t.pts.map(p=>p[1]);
+  const all=t.geoms.flat(),xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);
   const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),big=(x1-x0)+(y1-y0)+400;
   const n=t.lens.length,ok=h=>h.leg>0&&h.leg<n-1&&h.off>=S.cross&&h.L-h.off>=S.cross;
   for(let k=0;k<400;k++){
@@ -651,7 +762,7 @@ function makeCross(t,S,rng){
     const P=[x0+rng()*(x1-x0),y0+rng()*(y1-y0)];
     const A=[P[0]-u[0]*big,P[1]-u[1]*big],B=[P[0]+u[0]*big,P[1]+u[1]*big];
     const hits=[];
-    t.lens.forEach((L,i)=>{const x=segX(A,B,t.pts[i],t.pts[i+1]);if(x)hits.push({s:x.ta*2*big,leg:i,off:x.tb*L,L})});
+    t.lens.forEach((L,i)=>subsegs(t.geoms[i],L).forEach(sg=>{const x=segX(A,B,sg.a,sg.b);if(x)hits.push({s:x.ta*2*big,leg:i,off:sg.acc+x.tb*sg.l,L})}));
     hits.sort((a,b)=>a.s-b.s);
     const pairs=[];for(let j=0;j+1<hits.length;j++)if(ok(hits[j])&&ok(hits[j+1])&&hits[j].leg!==hits[j+1].leg)pairs.push(j);
     if(!pairs.length)continue;
@@ -687,10 +798,10 @@ function generate(lv,seed,count){
 /* ---------- drawing ---------- */
 const NS='http://www.w3.org/2000/svg';
 function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;parent&&parent.appendChild(e);return e}
-const along=(t,o)=>{const a=t.pts[o.leg],d=DIRS[t.heads[o.leg]];return[a[0]+d[0]*o.off,a[1]+d[1]*o.off]};
+const along=(t,o)=>pointAt(t.geoms[o.leg],t.lens[o.leg],o.off).p;
 
 function draw(t){
-  const xs=t.pts.map(p=>p[0]),ys=t.pts.map(p=>p[1]);
+  const all=t.geoms.flat(),xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);
   (t.cross||[]).forEach(c=>{xs.push(c[0],c[2]);ys.push(c[1],c[3])});
   let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
   const ext=Math.max(x1-x0,y1-y0,120),pad=ext*0.16,s=ext*0.03;
@@ -707,7 +818,8 @@ function drawInto(svg,t,B){
   for(let y=Math.ceil(y0/gs)*gs;y<=y1;y+=gs)el('line',{x1:x0,y1:y,x2:x1,y2:y,class:y%50===0?'g2':'g1','vector-effect':'non-scaling-stroke'},svg);
   (t.cross||[]).forEach((c,i)=>el('line',{x1:c[0],y1:c[1],x2:c[2],y2:c[3],class:'xtrk'+(c.draft?' draft':''),'vector-effect':'non-scaling-stroke'},svg));
   if(!t.pts.length)return svg;
-  el('polyline',{points:t.pts.map(p=>p.join(',')).join(' '),class:'trk','vector-effect':'non-scaling-stroke'},svg);
+  const line=t.geoms.length?[t.geoms[0][0]].concat(...t.geoms.map(g=>g.slice(1))):t.pts;
+  el('polyline',{points:line.map(p=>p.join(',')).join(' '),class:'trk','vector-effect':'non-scaling-stroke'},svg);
   // leg labels — each one tries several spots and takes the first that overlaps nothing
   const fs=s*1.15;
   const hit=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
@@ -720,16 +832,22 @@ function drawInto(svg,t,B){
   // sharp turns: mark the point and write 45° outside the narrow angle
   const acutes=[];
   for(let i=1;i<t.pts.length-1;i++)if(Math.abs(t.turns[i-1])===3){
-    const u1=DIRS[t.heads[i-1]],u2=DIRS[t.heads[i]],bx=-u1[0]+u2[0],by=-u1[1]+u2[1],bl=Math.hypot(bx,by)||1;
+    const u1=DIRS[t.outs[i-1]],u2=DIRS[t.heads[i]],bx=-u1[0]+u2[0],by=-u1[1]+u2[1],bl=Math.hypot(bx,by)||1;
     const lx=t.pts[i][0]-bx/bl*s*2.6,ly=t.pts[i][1]-by/bl*s*2.6;
     acutes.push({p:t.pts[i],lx,ly});obstacles.push(box(lx,ly,s*1.4));
   }
-  for(let i=0;i<t.lens.length;i++){const a=t.pts[i],b=t.pts[i+1],q=s*0.3;
-    if(t.heads[i]%2===0)trackBoxes.push({x:Math.min(a[0],b[0])-q,y:Math.min(a[1],b[1])-q,w:Math.abs(a[0]-b[0])+2*q,h:Math.abs(a[1]-b[1])+2*q});
-    else diagLegs.push([a,b]);}
+  // arcs: name the semicircle just outside its top, so it reads even when it is small on the map
+  const arcLbls=[];
+  (t.legs||[]).forEach((l,i)=>{if(!l.arc)return;
+    const a=t.pts[i],b=t.pts[i+1],c=[(a[0]+b[0])/2,(a[1]+b[1])/2],top=pointAt(t.geoms[i],l.L,l.L/2).p;
+    const ox=top[0]-c[0],oy=top[1]-c[1],ol=Math.hypot(ox,oy)||1,lx=top[0]+ox/ol*s*2.2,ly=top[1]+oy/ol*s*2.2;
+    arcLbls.push({lx,ly});obstacles.push(box(lx,ly,s*1.8));});
+  for(let i=0;i<t.lens.length;i++){const a=t.pts[i],b=t.pts[i+1],q=s*0.3,g=t.geoms[i];
+    if(g.length===2&&t.heads[i]%2===0)trackBoxes.push({x:Math.min(a[0],b[0])-q,y:Math.min(a[1],b[1])-q,w:Math.abs(a[0]-b[0])+2*q,h:Math.abs(a[1]-b[1])+2*q});
+    else for(let k=0;k<g.length-1;k++)diagLegs.push([g[k],g[k+1]]);}
   const placed=[];
   t.lens.forEach((L,i)=>{
-    const a=t.pts[i],d=DIRS[t.heads[i]],nx=d[1],ny=-d[0];
+    const legG=t.geoms[i];
     // split the leg at its objects: start → object(s) → turn/end
     const cuts=[0,...t.objs.filter(o=>o.leg===i&&o.off<L).map(o=>o.off).sort((p,q)=>p-q),L];
     const f=cuts.length>2?fs*0.9:fs;
@@ -738,7 +856,7 @@ function drawInto(svg,t,B){
       const w=f*(0.62*String(len).length+0.6),h=f*1.4;
       let best=null,bestCost=1e9;
       search:for(const dist of [2.1,3.4])for(const shift of [0,-0.25,0.25,-0.4,0.4])for(const side of [1,-1]){
-        const at=mid+shift*len, mx=a[0]+d[0]*at+side*nx*s*dist, my=a[1]+d[1]*at+side*ny*s*dist;
+        const P=pointAt(legG,L,mid+shift*len),mx=P.p[0]+side*P.dir[1]*s*dist,my=P.p[1]-side*P.dir[0]*s*dist;
         const r={x:mx-w/2,y:my-h/2,w,h,mx,my};
         let cost=0;
         placed.forEach(p=>{if(hit(r,p))cost+=10});
@@ -758,6 +876,7 @@ function drawInto(svg,t,B){
   });
   // turns
   for(let i=1;i<t.pts.length-1;i++)if(Math.abs(t.turns[i-1])!==3)el('circle',{cx:t.pts[i][0],cy:t.pts[i][1],r:s*0.55,class:'turnpt','vector-effect':'non-scaling-stroke'},svg);
+  arcLbls.forEach(a=>el('text',{x:a.lx,y:a.ly+s*0.4,'text-anchor':'middle','font-size':s*1.15,class:'acutelbl'},svg,T('toolArc')));
   acutes.forEach(a=>{
     el('circle',{cx:a.p[0],cy:a.p[1],r:s*0.75,class:'acutept','vector-effect':'non-scaling-stroke'},svg);
     el('text',{x:a.lx,y:a.ly+s*0.4,'text-anchor':'middle','font-size':s*1.15,class:'acutelbl'},svg,'45°');
@@ -787,7 +906,10 @@ function drawInto(svg,t,B){
 function rowsFor(t){
   const ev=[{at:0,kind:'flag',title:T('flag'),sub:T('flagSub')}];
   let cum=0;const n=t.lens.length;
-  t.lens.forEach((L,i)=>{cum+=L;if(i<n-1){
+  t.lens.forEach((L,i)=>{
+    const lg=t.legs&&t.legs[i];
+    if(lg&&lg.arc)ev.push({at:cum,kind:'arc',title:T('arcStart',lg.s>0,Math.round(L/Math.PI)),sub:T('arcSub',i+1,L)});
+    cum+=L;if(i<n-1){
     const v=t.turns[i],sharp=Math.abs(v)===3;
     ev.push({at:cum,kind:sharp?'turn acute':'turn',title:sharp?T('sharpTurn',v>0):T('turn',v>0),sub:T('legEnd',i+1,L)});
   }});
@@ -816,6 +938,8 @@ function extrasText(t){
   const sharp=t.turns.filter(v=>Math.abs(v)===3).length;
   if(sharp)parts.push(T('extraSharp',sharp));
   if(t.cross&&t.cross.length)parts.push(T('extraCross',t.cross.length));
+  const arcs=(t.legs||[]).filter(l=>l.arc).length;
+  if(arcs)parts.push(T('extraArc',arcs));
   return parts.map(p=>' · '+p).join('');
 }
 
@@ -830,7 +954,7 @@ function render(t){
 
 function show(code){
   if(/^\s*M\s*-/i.test(code||'')){loadManual(code);return}
-  const m=/^\s*(IGP\s*[123]|FH\s*[12])\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
+  const m=/^\s*(IGP\s*[123]|FH\s*[123])\s*-\s*(\d{1,9})\s*(?:-\s*(\d{1,2}))?\s*$/i.exec(code||'');
   if(!m){note(T('codeFormat'));return}
   const lv=m[1].replace(/\s/g,'').toUpperCase(),seed=+m[2];setLevel(lv);setCount(m[3]?+m[3]:defObjs(lv));
   const t=generate(lv,seed,objCount);
@@ -851,7 +975,7 @@ document.querySelectorAll('#levels button').forEach(b=>b.addEventListener('click
 // The track is stored as a start point plus legs {h: heading 0–7, L: steps}, so every leg stays straight.
 // Cross tracks are straight segments [x1,y1,x2,y2]. The area is a square of `ed.area` steps.
 const AREAS=[200,300,400,500,600,800,1000];
-const LEVEL_AREA={IGP1:300,IGP2:300,IGP3:400,FH1:500,FH2:600};
+const LEVEL_AREA={IGP1:300,IGP2:300,IGP3:400,FH1:500,FH2:600,FH3:800};
 const EBox=()=>{const A=ed.area,p=A*0.04;return{x0:-p,y0:-p,x1:A+p,y1:A+p,pad:p,s:A*0.03,scale:false}};
 // map units per screen pixel, so touch targets stay finger-sized at any zoom
 const upp=()=>{const w=edSvg.getBoundingClientRect().width;const b=EBox();return w>0?(b.x1-b.x0)/w:1};
@@ -862,14 +986,14 @@ let cornerDrag=null, crossDraft=null;
 const snap10=v=>Math.round(v/10)*10, snap5=v=>Math.round(v/5)*5;
 
 function trackFrom(start,legs,objCums,cross){
-  if(!start)return{pts:[],lens:[],heads:[],turns:[],steps:0,objs:[],cross:cross.slice(),level,manual:true};
-  const pts=cornersOf(start,legs),lens=legs.map(l=>l.L),heads=legs.map(l=>l.h),turns=[];
-  for(let i=1;i<heads.length;i++)turns.push(norm8(heads[i]-heads[i-1]));
+  if(!start)return{pts:[],geoms:[],legs:[],lens:[],heads:[],outs:[],turns:[],steps:0,objs:[],cross:cross.slice(),level,manual:true};
+  const {pts,geoms}=buildPath(start,legs),lens=legs.map(l=>l.L),heads=legs.map(l=>l.h),outs=legs.map(outHead),turns=[];
+  for(let i=1;i<heads.length;i++)turns.push(norm8(heads[i]-outs[i-1]));
   const steps=lens.reduce((a,b)=>a+b,0);
   const objs=[...new Set(objCums)].filter(c=>c>0&&c<=steps).sort((a,b)=>a-b).map(c=>{
     let st=0;for(let i=0;i<lens.length;i++){if(c<=st+lens[i])return{leg:i,off:c-st,cum:c};st+=lens[i]}
   });
-  return{pts,lens,heads,turns,steps,objs,cross:cross.slice(),level,manual:true};
+  return{pts,geoms,legs:legs.map(l=>Object.assign({},l)),lens,heads,outs,turns,steps,objs,cross:cross.slice(),level,manual:true};
 }
 function edTrack(){
   const legs=live?ed.legs.concat([live]):ed.legs;
@@ -878,9 +1002,12 @@ function edTrack(){
 }
 const edCorners=()=>ed.start?cornersOf(ed.start,ed.legs):[];
 const endPt=()=>{const c=edCorners();return c[c.length-1]};
-const lastH=()=>ed.legs.length?ed.legs[ed.legs.length-1].h:null;
-function edPoints(){const p=edCorners();ed.cross.forEach(c=>p.push([c[0],c[1]],[c[2],c[3]]));return p}
-const sharpIdx=()=>ed.legs.findIndex((l,k)=>k>0&&Math.abs(norm8(l.h-ed.legs[k-1].h))===3);
+const lastH=()=>ed.legs.length?outHead(ed.legs[ed.legs.length-1]):null;
+function edPoints(){const p=[];if(ed.start){const b=buildPath(ed.start,ed.legs);p.push(...b.pts);b.geoms.forEach(g=>p.push(...g))}ed.cross.forEach(c=>p.push([c[0],c[1]],[c[2],c[3]]));return p}
+const turnAt=k=>norm8(ed.legs[k].h-outHead(ed.legs[k-1])); // the turn before leg k
+const sharpCount=()=>ed.legs.filter((l,k)=>k>0&&Math.abs(turnAt(k))===3).length;
+const sharpIdx=()=>ed.legs.findIndex((l,k)=>k>0&&Math.abs(turnAt(k))===3);
+const arcIdx=()=>ed.legs.findIndex(l=>l.arc);
 
 const edSvg=el('svg',{class:'editor',role:'img','aria-label':T('edAria')});
 function bbox(cs){const xs=cs.map(q=>q[0]),ys=cs.map(q=>q[1]);return{x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys)}}
@@ -906,6 +1033,7 @@ function defaultHint(){
   if(tool==='obj')return ed.legs.length?T('hintObj'):T('hintNeedTrack');
   if(tool==='acute')return ed.legs.length>1?T('hintAcute'):T('hintAcuteEmpty');
   if(tool==='cross')return T('hintCross');
+  if(tool==='arc')return ed.legs.length?T('hintArc'):T('hintArcEmpty');
   if(ed.legs.length>1)return T('hintEdit');
   return ed.start?T('hintContinue'):T('hintStart');
 }
@@ -914,6 +1042,8 @@ function syncTools(){
   const extra=!!LEVELS[level].acute||sharpIdx()>=0||ed.cross.length>0;
   $('toolAcute').hidden=!extra;$('toolCross').hidden=!extra;
   if(!extra&&(tool==='acute'||tool==='cross'))tool='draw';
+  const arcTool=!!LEVELS[level].arc||arcIdx()>=0;
+  $('toolArc').hidden=!arcTool;if(!arcTool&&tool==='arc')tool='draw';
   document.querySelectorAll('#tool button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tool)));
 }
 
@@ -934,7 +1064,7 @@ function renderEditor(){
     if(tool==='draw'){const e=t.pts[t.pts.length-1];el('circle',{cx:e[0],cy:e[1],r:ES*1.3,class:'endh','vector-effect':'non-scaling-stroke'},edG)}
     for(let i=1;i<cs.length-1;i++)el('circle',{cx:cs[i][0],cy:cs[i][1],r:ES*(cornerDrag&&cornerDrag.i===i?1.3:1),class:'endh','vector-effect':'non-scaling-stroke'},edG);
   }
-  edSvg.classList.toggle('objmode',tool==='obj'||tool==='acute');
+  edSvg.classList.toggle('objmode',tool==='obj'||tool==='acute'||tool==='arc');
   if(!dragging&&!cornerDrag&&!crossDraft)setHint(defaultHint());
   // side panels
   const n=t.lens.length;
@@ -951,10 +1081,12 @@ function checksFor(t){
   out.push([n===L.legs?'ok':'bad',T('ckLegs',n,L.legs)]);
   const firstMin=Math.max(S.start,L.firstObj||0);
   const sharp=t.turns.filter(v=>Math.abs(v)===3).length,needSharp=L.acute||0;
-  const sharpAt=t.turns.findIndex(v=>Math.abs(v)===3);
-  if(needSharp&&sharp===1&&sharpAt!==t.turns.length-1)out.push(['bad',T('sharpNotLast',sharpAt+1,t.turns.length)]);
   if(needSharp||sharp)out.push([sharp===needSharp?'ok':'bad',
-    !needSharp?T('noSharpHere'):sharp===needSharp?T('oneSharp'):sharp?T('manySharp',sharp):T('noSharp')]);
+    !needSharp?T('noSharpHere'):sharp===needSharp?T('sharpOk',sharp):sharp?T('wrongSharp',sharp,needSharp):T('noSharpN',needSharp)]);
+  if(L.sharpLast&&n>1&&Math.abs(t.turns[n-2])!==3)out.push(['bad',T('lastNotSharp')]);
+  const arcs=t.legs.filter(l=>l.arc).length,needArc=L.arc||0;
+  if(needArc||arcs)out.push([arcs===needArc?'ok':'bad',!needArc?T('noArcHere'):arcs===needArc?T('oneArc'):arcs?T('manyArcs',arcs):T('noArc')]);
+  t.legs.forEach((l,i)=>{if(l.arc&&((i>0&&Math.abs(t.turns[i-1])!==2)||(i<n-1&&Math.abs(t.turns[i])!==2)))out.push(['bad',T('arcTurns')])});
   const cr=t.cross||[];
   if(L.cross&&!cr.length)out.push(['bad',T('needCross')]);
   if(!L.cross&&cr.length)out.push(['bad',T('noCrossHere')]);
@@ -973,25 +1105,24 @@ function checksFor(t){
     if(o.leg>0&&o.off<S.after)bad.push(T('objAfter',k,o.off,S.after));
   });
   for(let i=1;i<t.objs.length;i++){const d=t.objs[i].cum-t.objs[i-1].cum;if(d<S.gap)bad.push(T('objGap',i,i+1,d,S.gap))}
-  const segs=t.lens.map((_,i)=>[t.pts[i],t.pts[i+1]]);
-  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=segDist(segs[i],segs[j]);if(d<S.sep)bad.push(d<0.5?T('legsCross',i+1,j+1):T('legsClose',i+1,j+1,Math.round(d),S.sep))}
+  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){const d=legDist(t.geoms[i],t.geoms[j]);if(d<S.sep)bad.push(d<0.5?T('legsCross',i+1,j+1):T('legsClose',i+1,j+1,Math.round(d),S.sep))}
   if(bad.length)bad.forEach(b=>out.push(['bad',b]));else out.push(['ok',T('distOk')]);
   return out;
 }
 
 // code: M-<legs>-<objects>-X<cross tracks>, e.g. M-U120R80UR100-90.200.300-X-20,40,180,40
-// legs are heading letters + steps; cross tracks are x1,y1,x2,y2 relative to the flag
+// legs are heading letters + steps (an arc is ~, heading, > or < for right/left, steps); cross tracks are x1,y1,x2,y2 relative to the flag
 function manualCode(t){
   const s=t.pts[0];
-  let c='M-'+t.lens.map((L,i)=>HEAD_CODE[t.heads[i]]+L).join('')+(t.objs.length?'-'+t.objs.map(o=>o.cum).join('.'):'');
+  let c='M-'+t.legs.map(l=>(l.arc?'~':'')+HEAD_CODE[l.h]+(l.arc?(l.s>0?'>':'<'):'')+l.L).join('')+(t.objs.length?'-'+t.objs.map(o=>o.cum).join('.'):'');
   const cr=(t.cross||[]).filter(x=>!x.draft);
   if(cr.length)c+='-X'+cr.map(x=>[x[0]-s[0],x[1]-s[1],x[2]-s[0],x[3]-s[1]].map(v=>Math.round(v)).join(',')).join(';');
   return c;
 }
 function loadManual(code){
-  const m=/^\s*M\s*-\s*((?:(?:UR|DR|DL|UL|U|R|D|L)\d{1,4})+)\s*(?:-\s*(\d+(?:\.\d+)*))?\s*(?:-\s*X\s*(-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*))?\s*$/i.exec(code||'');
+  const m=/^\s*M\s*-\s*((?:~?(?:UR|DR|DL|UL|U|R|D|L)[<>]?\d{1,4})+)\s*(?:-\s*(\d+(?:\.\d+)*))?\s*(?:-\s*X\s*(-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*))?\s*$/i.exec(code||'');
   if(!m){note(T('manualFormat'));return}
-  const legs=m[1].toUpperCase().match(/(UR|DR|DL|UL|U|R|D|L)\d+/g).map(s=>{const k=s.match(/^[A-Z]+/)[0];return{h:HEAD_CODE.indexOf(k),L:+s.slice(k.length)}});
+  const legs=[...m[1].toUpperCase().matchAll(/(~?)(UR|DR|DL|UL|U|R|D|L)([<>]?)(\d+)/g)].map(x=>x[1]?{h:HEAD_CODE.indexOf(x[2]),L:+x[4],arc:true,s:x[3]==='<'?-1:1}:{h:HEAD_CODE.indexOf(x[2]),L:+x[4]});
   snapshot();
   ed={start:[0,0],legs,objs:m[2]?m[2].split('.').map(Number):[],cross:m[3]?m[3].split(';').map(s=>s.split(',').map(Number)):[],area:400};
   live=null;lineH=null;
@@ -1014,12 +1145,13 @@ function toPt(e){
 // Extend the track toward the finger. The live leg follows one line; a sideways move commits a 90° turn.
 // Moving back along the previous leg's line re-opens that leg for editing.
 function extend(q,depth=0){
-  const c=endPt(),dl=[q.x-c[0],q.y-c[1]],prev=lastH();
+  const c=endPt(),dl=[q.x-c[0],q.y-c[1]],prev=lastH(),afterArc=ed.legs.length>0&&!!ed.legs[ed.legs.length-1].arc;
   if(lineH===null){
     if(Math.hypot(dl[0],dl[1])<tol(10,6)){live=null;return}
-    const cands=prev===null?[0,2]:[prev,(prev+2)%8];
+    // after the arc the track must turn 90°; otherwise it may also re-open the previous leg
+    const cands=prev===null?[0,2]:afterArc?[(prev+2)%8]:[prev,(prev+2)%8];
     let best=cands[0];cands.forEach(h=>{if(Math.abs(dot(dl,DIRS[h]))>Math.abs(dot(dl,DIRS[best])))best=h});
-    if(prev!==null&&best===prev&&depth<6){ed.legs.pop();live=null;lineH=prev;return extend(q,depth+1)}
+    if(prev!==null&&!afterArc&&best===prev&&depth<6){ed.legs.pop();live=null;lineH=prev;return extend(q,depth+1)}
     lineH=best;
   }
   const u=DIRS[lineH],len=snap10(dot(dl,u)),perp=crs(u,dl);
@@ -1035,14 +1167,7 @@ function extend(q,depth=0){
 function placeObjAt(p){
   const t=edTrack();
   if(!t.lens.length){setHint(T('hintNeedTrack'),true);return}
-  let best=null,st=0;
-  t.lens.forEach((L,i)=>{
-    const a=t.pts[i],d=DIRS[t.heads[i]];
-    const proj=Math.max(0,Math.min(L,(p.x-a[0])*d[0]+(p.y-a[1])*d[1]));
-    const x=a[0]+d[0]*proj,y=a[1]+d[1]*proj,dist=Math.hypot(p.x-x,p.y-y);
-    if(!best||dist<best.dist)best={dist,cum:st+proj};
-    st+=L;
-  });
+  const best=nearestOnTrack(t,p);
   if(best.dist>tol(26,15)){setHint(T('hintTouchLine'),true);return}
   const cum=Math.max(5,Math.min(t.steps,Math.round(best.cum/5)*5));
   snapshot();
@@ -1061,9 +1186,10 @@ function nearestCorner(p){
 function toggleAcute(p){
   const i=nearestCorner(p);
   if(i<0){setHint(T('hintTapTurn'),true);return}
-  const d=norm8(ed.legs[i].h-ed.legs[i-1].h),sg=Math.sign(d);
+  if(ed.legs[i-1].arc||ed.legs[i].arc){setHint(T('hintSharpArc'),true);return}
+  const d=turnAt(i),sg=Math.sign(d);
   if(Math.abs(d)===2){
-    if(sharpIdx()>=0){setHint(T('hintHasSharp'),true);return}
+    if(sharpCount()>=Math.max(1,LEVELS[level].acute||0)){setHint(T('hintHasSharp'),true);return}
     snapshot();for(let k=i;k<ed.legs.length;k++)ed.legs[k].h=(ed.legs[k].h+sg+8)%8;
   }else if(Math.abs(d)===3){
     snapshot();for(let k=i;k<ed.legs.length;k++)ed.legs[k].h=(ed.legs[k].h-sg+8)%8;
@@ -1082,8 +1208,9 @@ function moveCorner(q){
   const solve=(a,b,v)=>{const den=crs(a,b);return Math.abs(den)<1e-9?[0,dot(v,b)]:[crs(v,b)/den,crs(a,v)/den]};
   const attempt=dv=>{
     const [t0,q1]=solve(u0,u1,dv),[r3,w2]=solve(u3,u2,dv);
-    const T=snap10(t0),Q=snap10(q1),Rr=snap10(r3),W=snap10(w2);
-    const nl=legs.map(l=>({h:l.h,L:l.L}));let st=base.start.slice();
+    // an arc keeps its length, so a neighbouring corner on the far side of an arc stays put
+    const T=i>=2&&legs[i-2].arc?0:snap10(t0),Q=snap10(q1),Rr=i+1<n&&legs[i+1].arc?0:snap10(r3),W=snap10(w2);
+    const nl=legs.map(l=>Object.assign({},l));let st=base.start.slice();
     if(i>=2)nl[i-2].L+=T;else st=[st[0]+u0[0]*T,st[1]+u0[1]*T];
     nl[i-1].L+=Q;nl[i].L-=W;if(i+1<n)nl[i+1].L-=Rr;
     return nl.every(l=>l.L>=10)?{start:st,legs:nl}:null;
@@ -1095,6 +1222,25 @@ function moveCorner(q){
   // objects stay on their leg at the same distance from its start
   const lens=r.legs.map(l=>l.L),starts=[0];lens.forEach((L,k)=>starts.push(starts[k]+L));
   ed.objs=pins.map(p=>p.end?starts[lens.length]:starts[p.leg]+Math.min(p.off,lens[p.leg]));
+}
+
+// Turn a straight leg into the semicircle (or back). The turns into and out of it stay 90°.
+function toggleArc(p){
+  const t=edTrack();
+  if(!t.lens.length){setHint(T('hintArcEmpty'),true);return}
+  const b=nearestOnTrack(t,p);
+  if(b.dist>tol(26,15)){setHint(T('hintTouchLeg'),true);return}
+  const i=b.leg,l=ed.legs[i];
+  if(l.arc){snapshot();ed.legs[i]={h:l.h,L:l.prevL||l.L}}
+  else{
+    if(arcIdx()>=0){setHint(T('hintHasArc'),true);return}
+    const tin=i>0?turnAt(i):0,tout=i<ed.legs.length-1?turnAt(i+1):0;
+    if(Math.abs(tin)===3||Math.abs(tout)===3){setHint(T('hintArcSharp'),true);return}
+    // bend toward the side the track was turning to, so the arc bulges away from the rest of the track
+    const s=tout?Math.sign(tout):tin?-Math.sign(tin):1;
+    snapshot();ed.legs[i]={h:l.h,L:ARC_L,arc:true,s,prevL:l.L};
+  }
+  fitIfNeeded();saveDraft();renderEditor();
 }
 
 function crossDraftTo(p){
@@ -1109,6 +1255,7 @@ edSvg.addEventListener('pointerdown',e=>{
   const p=toPt(e);
   if(tool==='obj'){placeObjAt(p);return}
   if(tool==='acute'){toggleAcute(p);return}
+  if(tool==='arc'){toggleArc(p);return}
   if(tool==='cross'){
     crossDraft={a:[snap5(p.x),snap5(p.y)],b:null,p};
     try{edSvg.setPointerCapture(e.pointerId)}catch(err){}
@@ -1119,6 +1266,7 @@ edSvg.addEventListener('pointerdown',e=>{
     if(Math.hypot(p.x-end[0],p.y-end[1])>tol(28,20)){
       const gi=nearestCorner(p);
       if(gi<0){setHint(T('hintGrab'),true);return}
+      if(ed.legs[gi-1].arc||ed.legs[gi].arc){setHint(T('hintCornerArc'),true);return}
       snapshot();
       const t=edTrack();
       cornerDrag={i:gi,base:JSON.parse(JSON.stringify({start:ed.start,legs:ed.legs})),pins:t.objs.map(o=>({leg:o.leg,off:o.off,end:o.cum===t.steps}))};
