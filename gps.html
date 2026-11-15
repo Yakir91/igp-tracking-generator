@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>גישוש עם GPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Secular+One&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: a field tool for one hand — saved-track list, then full-screen map views with a stats strip on top and big buttons at the bottom */
+:root{
+  --bg:#F1F3EC; --paper:#FBFCF8; --ink:#1E2A20; --muted:#5E6B5F; --line:#D5DBCD;
+  --track:#2F5D3A; --flag:#D24A12; --obj:#B97A12; --obj-ink:#FFFFFF;
+  --accent:#2F5D3A; --accent-ink:#FFFFFF; --cross:#6A4BB0; --ok:#2F7D46; --bad:#C2410C;
+  --f-display:"Secular One","Assistant",system-ui,sans-serif;
+  --f-body:"Assistant",system-ui,"Segoe UI",Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141A15; --paper:#1B231C; --ink:#E6ECE2; --muted:#9AA898; --line:#2F3A30;
+  --track:#7FC08D; --flag:#FF7A3D; --obj:#E9B04A; --obj-ink:#1B1406;
+  --accent:#7FC08D; --accent-ink:#0F1A11; --cross:#B9A2F0; --ok:#7FC08D; --bad:#FF8A5B; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#141A15; --paper:#1B231C; --ink:#E6ECE2; --muted:#9AA898; --line:#2F3A30;
+  --track:#7FC08D; --flag:#FF7A3D; --obj:#E9B04A; --obj-ink:#1B1406;
+  --accent:#7FC08D; --accent-ink:#0F1A11; --cross:#B9A2F0; --ok:#7FC08D; --bad:#FF8A5B; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+button{font:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--flag);outline-offset:2px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* home */
+.home{max-width:720px;margin:0 auto;padding-block:16px 40px;display:flex;flex-direction:column;gap:16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.backlink{color:var(--ink);font-weight:600;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:7px 12px;background:var(--paper)}
+.langsel{font:600 15px var(--f-body);padding:7px 8px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,6vw,34px);margin:0;line-height:1.15;text-wrap:balance}
+.intro{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.btn{font-weight:700;font-size:17px;border-radius:12px;padding:12px 18px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.btn.ghost{background:var(--paper);color:var(--ink);border-color:var(--line);font-weight:600}
+.btn.warn{background:var(--flag);border-color:var(--flag);color:#fff}
+.btn:disabled{opacity:.4;cursor:default}
+.big{width:100%;padding:16px;font-size:19px}
+h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card .name{font-weight:700;font-size:18px;overflow-wrap:anywhere}
+.card .meta{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.card .age{font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.card .acts{display:flex;gap:8px;flex-wrap:wrap}
+.card .acts .btn{padding:9px 14px;font-size:16px}
+.empty{color:var(--muted);background:var(--paper);border:1px dashed var(--line);border-radius:12px;padding:16px}
+.draftbox{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--paper);border:1px solid var(--flag);border-radius:12px;padding:12px 14px}
+
+/* map screens */
+.screen{height:100%;display:grid;grid-template-rows:auto auto 1fr auto;background:var(--bg)}
+.shead{display:flex;align-items:center;gap:10px;padding-block:calc(8px + env(safe-area-inset-top,0px)) 8px;background:var(--paper);border-bottom:1px solid var(--line)}
+.shead .ttl{font-weight:700;font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:6px 12px;font-weight:600;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.stat{background:var(--paper);padding:6px 8px;text-align:center;min-width:0}
+.stat .k{font-size:12px;color:var(--muted);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat .v.ok{color:var(--ok)} .stat .v.bad{color:var(--bad)}
+.mapwrap{position:relative;min-height:0}
+.map{position:absolute;inset:0}
+.banner{position:absolute;top:10px;inset-inline:10px;z-index:500;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.banner.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.banner.ok{border-color:var(--ok)}
+.mapbtns{position:absolute;bottom:24px;left:12px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.mapbtns button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:8px 10px;font-weight:600;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.mapbtns button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--line)}
+.bottom .btn{padding:15px 10px;font-size:18px}
+.flagico{width:22px;height:22px;flex:none}
+.note{font-size:13px;color:var(--muted);padding-block:6px;background:var(--paper)}
+
+/* map markers */
+.mk-flag svg{display:block}
+.mk-art{display:grid;place-items:center}
+.mk-art span{width:26px;height:26px;transform:rotate(45deg);background:#E9A93A;border:2px solid #fff;border-radius:4px;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mk-art b{transform:rotate(-45deg);color:#1B1406;font:700 13px var(--f-body)}
+.mk-art.found span{background:#2F9E55}
+.mk-art.found b{color:#fff}
+.mk-turn{width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid #2F5D3A}
+.mk-me{width:18px;height:18px;border-radius:50%;background:#1F6FEB;border:3px solid #fff;box-shadow:0 0 0 2px rgba(31,111,235,.35),0 1px 5px rgba(0,0,0,.4)}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);padding:18px;width:min(420px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{font-family:var(--f-display);font-weight:400;font-size:21px;margin:0 0 10px}
+dialog label{display:flex;flex-direction:column;gap:6px;font-weight:600}
+dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.dacts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
+.sum{display:grid;grid-template-columns:1fr auto;gap:6px 14px;margin:0}
+.sum dt{color:var(--muted)} .sum dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:end}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(200px + env(safe-area-inset-top,0px));z-index:1000;background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-weight:600;max-width:calc(100vw - 32px)}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+</style>
+</head>
+<body>
+
+<!-- home: saved tracks -->
+<main id="home" class="home gut">
+  <div class="topbar">
+    <a class="backlink" href="index.html" data-i18n="backGen">מחולל המסלולים</a>
+    <select id="lang" class="langsel" aria-label="שפה">
+      <option value="he">עברית</option><option value="en">English</option><option value="de">Deutsch</option>
+    </select>
+  </div>
+  <header>
+    <h1 data-i18n="title">גישוש עם GPS</h1>
+    <p class="intro" data-i18n="intro"></p>
+  </header>
+  <div id="draftBox" class="draftbox" hidden>
+    <span id="draftText"></span>
+    <span style="display:flex;gap:8px">
+      <button class="btn" id="draftResume" data-i18n="resume"></button>
+      <button class="btn ghost" id="draftDiscard" data-i18n="discardDraft"></button>
+    </span>
+  </div>
+  <button class="btn big" id="newTrack">
+    <svg class="flagico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h12l-3 4 3 4H6z" fill="currentColor"/></svg>
+    <span data-i18n="newTrack"></span>
+  </button>
+  <h2 data-i18n="savedTitle"></h2>
+  <ul class="list" id="list"></ul>
+  <p class="empty" id="empty" data-i18n="empty" hidden></p>
+</main>
+
+<!-- laying and following share one map screen -->
+<section id="screen" class="screen" hidden>
+  <div class="shead gut">
+    <button class="iconbtn" id="exitBtn" data-i18n="back"></button>
+    <div class="ttl" id="sTitle"></div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="mapwrap">
+    <div id="map" class="map"></div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="mapbtns">
+      <button id="followBtn" aria-pressed="true" data-i18n="center"></button>
+      <button id="layerBtn"></button>
+    </div>
+  </div>
+  <div>
+    <p class="note gut" id="hintLine"></p>
+    <div class="bottom gut">
+      <button class="btn" id="mainBtn"></button>
+      <button class="btn ghost" id="sideBtn"></button>
+    </div>
+  </div>
+</section>
+
+<dialog id="saveDlg">
+  <form method="dialog" id="saveForm">
+    <h3 data-i18n="saveTitle"></h3>
+    <label for="nameIn"><span data-i18n="nameLabel"></span><input id="nameIn" maxlength="60" autocomplete="off"></label>
+    <p class="intro" id="saveMeta"></p>
+    <div class="dacts">
+      <button type="button" class="btn ghost" id="saveDiscard" data-i18n="discardTrack"></button>
+      <button type="submit" class="btn" id="saveOk" data-i18n="save"></button>
+    </div>
+  </form>
+</dialog>
+<dialog id="askDlg">
+  <h3 id="askText"></h3>
+  <div class="dacts">
+    <button class="btn ghost" id="askNo" data-i18n="cancel"></button>
+    <button class="btn warn" id="askYes"></button>
+  </div>
+</dialog>
+<dialog id="sumDlg">
+  <h3 data-i18n="sumTitle"></h3>
+  <dl class="sum" id="sumList"></dl>
+  <div class="dacts"><button class="btn" id="sumClose" data-i18n="close"></button></div>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+/* ---------- languages (shares the choice with the generator page) ---------- */
+const I18N={
+he:{
+  title:'גישוש עם GPS',
+  intro:'הנח מסלול בשטח תוך כדי הליכה וסמן חפצים בדרך. אחר כך צא עם הכלב, ועל המפה תראה את המסלול שהנחת, איפה אתה עכשיו, מתי מגיעה פנייה ואילו חפצים נמצאו.',
+  backGen:'מחולל המסלולים',newTrack:'הנחת מסלול חדש',savedTitle:'מסלולים שמורים',
+  empty:'עדיין אין מסלולים שמורים. כשתהיה בשטח, לחץ על "הנחת מסלול חדש".',
+  listMeta:(m,s,a)=>`${m} מ' · ${s} צעדים · ${a} חפצים`,
+  agedFor:t=>`מונח כבר ${t}`,trackedAfter:t=>`גושש אחרי ${t}`,runs:n=>n===1?'גישוש אחד':`${n} גישושים`,
+  follow:'צא לגישוש',del:'מחק',delAsk:n=>`למחוק את "${n}"?`,cancel:'ביטול',
+  draftLay:'יש הנחת מסלול שלא הסתיימה.',draftRun:t=>`יש גישוש שלא הסתיים: ${t}.`,resume:'המשך',discardDraft:'בטל אותה',
+  back:'חזרה',layTitle:'הנחת מסלול',
+  startLay:'התחל הנחה',stopLay:'סיים הנחה',markArt:'סמן חפץ',
+  sTime:'זמן',sDist:'צעדים',sArts:'חפצים',sGps:'דיוק GPS',
+  waitGps:'מחכה למיקום GPS…',
+  gpsWeak:a=>`אות GPS חלש (±${a} מ'). כדאי לחכות שהדיוק ישתפר.`,
+  gpsDenied:'אין גישה למיקום. אפשר גישה למיקום לאתר הזה בהגדרות הדפדפן ונסה שוב.',
+  gpsNone:'הדפדפן הזה לא תומך במיקום.',
+  layHint:'השאר את המסך דלוק והעמוד פתוח בזמן ההליכה, אחרת הטלפון עלול להפסיק לעדכן את המיקום.',
+  layReady:'עמוד בנקודת ההתחלה ולחץ "התחל הנחה". הדגל יונח איפה שאתה עומד.',
+  artMarked:k=>`חפץ ${k} סומן`,tooShort:'המסלול קצר מדי. לך לפחות כמה מטרים לפני שמסיימים.',
+  saveTitle:'שמירת המסלול',nameLabel:'שם המסלול',save:'שמור',discardTrack:'מחק בלי לשמור',
+  saveMeta:(m,s,a,t)=>`${m} מ' (${s} צעדים), ${a} חפצים, ${t} הליכה. הזמן ממשיך לרוץ עד שתתחיל לגשש.`,
+  defName:d=>`מסלול ${d}`,saved:'המסלול נשמר',
+  discardAsk:'למחוק את המסלול שהנחת בלי לשמור?',discardYes:'מחק',
+  sAge:'גיל המסלול',sRun:'זמן גישוש',sOff:'מהמסלול',sFound:'נמצאו',
+  startRun:'התחל גישוש',stopRun:'סיים גישוש',artFound:'חפץ נמצא',
+  runReady:'הגיל של המסלול נספר מתחילת ההנחה. לחץ "התחל גישוש" כשהכלב יוצא מהדגל.',
+  runHint:'הקו הירוק הוא המסלול שהונח. הקו הסגול המקווקו הוא הדרך שלך עכשיו.',
+  onTrack:'על המסלול',offBy:m=>`רחוק מהמסלול ${m} מ'`,
+  nextTurn:(d,m)=>`הפנייה הבאה: ${d} בעוד ${m} מ'`,right:'ימינה',left:'שמאלה',
+  endIn:m=>`אין עוד פניות. סוף המסלול בעוד ${m} מ'`,
+  nearArt:k=>`חפץ ${k} לפניך, כ-${'{m}'} מ'`,
+  foundMsg:k=>`חפץ ${k} נמצא`,unfoundMsg:k=>`חפץ ${k} סומן כלא נמצא`,allFound:'כל החפצים נמצאו',
+  stopAsk:'לסיים את הגישוש?',stopYes:'סיים',
+  sumTitle:'סיכום הגישוש',sumAge:'גיל המסלול בהתחלה',sumTime:'זמן גישוש',sumFound:'חפצים שנמצאו',sumOf:(f,n)=>`${f} מתוך ${n}`,
+  sumMax:'הסטייה הגדולה ביותר',sumOn:'זמן על המסלול',sumProg:'התקדמות לאורך המסלול',close:'סגור',
+  center:'עקוב',layerSat:'לוויין',layerMap:'מפה',m:v=>`${v} מ'`
+},
+en:{
+  title:'GPS tracking',
+  intro:'Lay a track in the field as you walk and mark the articles on the way. Then go out with the dog: the map shows the track you laid, where you are now, when a turn is coming and which articles were found.',
+  backGen:'Track generator',newTrack:'Lay a new track',savedTitle:'Saved tracks',
+  empty:'No saved tracks yet. When you are in the field, tap "Lay a new track".',
+  listMeta:(m,s,a)=>`${m} m · ${s} steps · ${a} articles`,
+  agedFor:t=>`Aged ${t}`,trackedAfter:t=>`Tracked after ${t}`,runs:n=>n===1?'1 run':`${n} runs`,
+  follow:'Go tracking',del:'Delete',delAsk:n=>`Delete "${n}"?`,cancel:'Cancel',
+  draftLay:'A track you started laying was not finished.',draftRun:t=>`A tracking run was not finished: ${t}.`,resume:'Continue',discardDraft:'Discard it',
+  back:'Back',layTitle:'Laying a track',
+  startLay:'Start laying',stopLay:'Finish laying',markArt:'Mark article',
+  sTime:'Time',sDist:'Steps',sArts:'Articles',sGps:'GPS accuracy',
+  waitGps:'Waiting for a GPS position…',
+  gpsWeak:a=>`Weak GPS signal (±${a} m). Wait for better accuracy.`,
+  gpsDenied:'No access to your location. Allow location for this site in your browser settings and try again.',
+  gpsNone:'This browser does not support location.',
+  layHint:'Keep the screen on and this page open while walking, or the phone may stop updating your position.',
+  layReady:'Stand at the start and tap "Start laying". The flag is placed where you stand.',
+  artMarked:k=>`Article ${k} marked`,tooShort:'The track is too short. Walk at least a few meters before finishing.',
+  saveTitle:'Save the track',nameLabel:'Track name',save:'Save',discardTrack:'Delete without saving',
+  saveMeta:(m,s,a,t)=>`${m} m (${s} steps), ${a} articles, ${t} walking. The age keeps counting until you start tracking.`,
+  defName:d=>`Track ${d}`,saved:'Track saved',
+  discardAsk:'Delete the track you laid without saving it?',discardYes:'Delete',
+  sAge:'Track age',sRun:'Tracking time',sOff:'Off track',sFound:'Found',
+  startRun:'Start tracking',stopRun:'Finish tracking',artFound:'Article found',
+  runReady:'The track age counts from the start of laying. Tap "Start tracking" when the dog leaves the flag.',
+  runHint:'The green line is the laid track. The dashed purple line is your path now.',
+  onTrack:'On the track',offBy:m=>`${m} m off the track`,
+  nextTurn:(d,m)=>`Next turn: ${d} in ${m} m`,right:'right',left:'left',
+  endIn:m=>`No more turns. End of the track in ${m} m`,
+  nearArt:k=>`Article ${k} ahead, about ${'{m}'} m`,
+  foundMsg:k=>`Article ${k} found`,unfoundMsg:k=>`Article ${k} set back to not found`,allFound:'All articles found',
+  stopAsk:'Finish this tracking run?',stopYes:'Finish',
+  sumTitle:'Tracking summary',sumAge:'Track age at start',sumTime:'Tracking time',sumFound:'Articles found',sumOf:(f,n)=>`${f} of ${n}`,
+  sumMax:'Largest deviation',sumOn:'Time on the track',sumProg:'Progress along the track',close:'Close',
+  center:'Follow',layerSat:'Satellite',layerMap:'Map',m:v=>`${v} m`
+},
+de:{
+  title:'GPS-Fährte',
+  intro:'Lege eine Fährte im Gelände, während du gehst, und markiere unterwegs die Gegenstände. Danach gehst du mit dem Hund los: Die Karte zeigt die gelegte Fährte, deinen Standort, den nächsten Winkel und welche Gegenstände gefunden wurden.',
+  backGen:'Fährtengenerator',newTrack:'Neue Fährte legen',savedTitle:'Gespeicherte Fährten',
+  empty:'Noch keine gespeicherten Fährten. Tippe im Gelände auf „Neue Fährte legen“.',
+  listMeta:(m,s,a)=>`${m} m · ${s} Schritte · ${a} Gegenstände`,
+  agedFor:t=>`Liegt seit ${t}`,trackedAfter:t=>`Ausgearbeitet nach ${t}`,runs:n=>n===1?'1 Durchgang':`${n} Durchgänge`,
+  follow:'Ausarbeiten',del:'Löschen',delAsk:n=>`„${n}“ löschen?`,cancel:'Abbrechen',
+  draftLay:'Eine begonnene Fährte wurde nicht fertig gelegt.',draftRun:t=>`Ein Durchgang wurde nicht beendet: ${t}.`,resume:'Weiter',discardDraft:'Verwerfen',
+  back:'Zurück',layTitle:'Fährte legen',
+  startLay:'Legen starten',stopLay:'Legen beenden',markArt:'Gegenstand',
+  sTime:'Zeit',sDist:'Schritte',sArts:'Gegenst.',sGps:'GPS-Genauigkeit',
+  waitGps:'Warte auf GPS-Position…',
+  gpsWeak:a=>`Schwaches GPS-Signal (±${a} m). Warte auf bessere Genauigkeit.`,
+  gpsDenied:'Kein Zugriff auf den Standort. Erlaube den Standort für diese Seite in den Browser-Einstellungen und versuche es erneut.',
+  gpsNone:'Dieser Browser unterstützt keinen Standort.',
+  layHint:'Lass den Bildschirm an und diese Seite offen, sonst aktualisiert das Handy den Standort eventuell nicht mehr.',
+  layReady:'Stell dich an den Abgang und tippe auf „Legen starten“. Die Fahne wird dort gesetzt, wo du stehst.',
+  artMarked:k=>`Gegenstand ${k} markiert`,tooShort:'Die Fährte ist zu kurz. Geh zuerst ein paar Meter.',
+  saveTitle:'Fährte speichern',nameLabel:'Name der Fährte',save:'Speichern',discardTrack:'Ohne Speichern löschen',
+  saveMeta:(m,s,a,t)=>`${m} m (${s} Schritte), ${a} Gegenstände, ${t} gegangen. Die Liegezeit läuft weiter, bis du mit dem Ausarbeiten beginnst.`,
+  defName:d=>`Fährte ${d}`,saved:'Fährte gespeichert',
+  discardAsk:'Die gelegte Fährte ohne Speichern löschen?',discardYes:'Löschen',
+  sAge:'Liegezeit',sRun:'Ausarbeitung',sOff:'Abstand',sFound:'Gefunden',
+  startRun:'Ausarbeiten starten',stopRun:'Ausarbeiten beenden',artFound:'Gefunden',
+  runReady:'Die Liegezeit zählt ab Beginn des Legens. Tippe auf „Ausarbeiten starten“, wenn der Hund am Abgang ansetzt.',
+  runHint:'Die grüne Linie ist die gelegte Fährte. Die gestrichelte violette Linie ist dein aktueller Weg.',
+  onTrack:'Auf der Fährte',offBy:m=>`${m} m neben der Fährte`,
+  nextTurn:(d,m)=>`Nächster Winkel: ${d} in ${m} m`,right:'rechts',left:'links',
+  endIn:m=>`Keine Winkel mehr. Ende der Fährte in ${m} m`,
+  nearArt:k=>`Gegenstand ${k} voraus, ca. ${'{m}'} m`,
+  foundMsg:k=>`Gegenstand ${k} gefunden`,unfoundMsg:k=>`Gegenstand ${k} wieder als nicht gefunden markiert`,allFound:'Alle Gegenstände gefunden',
+  stopAsk:'Diesen Durchgang beenden?',stopYes:'Beenden',
+  sumTitle:'Zusammenfassung',sumAge:'Liegezeit beim Start',sumTime:'Ausarbeitungszeit',sumFound:'Gefundene Gegenstände',sumOf:(f,n)=>`${f} von ${n}`,
+  sumMax:'Größte Abweichung',sumOn:'Zeit auf der Fährte',sumProg:'Fortschritt entlang der Fährte',close:'Schließen',
+  center:'Folgen',layerSat:'Satellit',layerMap:'Karte',m:v=>`${v} m`
+}};
+const DIRS={he:'rtl',en:'ltr',de:'ltr'};
+const $=id=>document.getElementById(id);
+function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function drop(k){try{localStorage.removeItem(k)}catch(e){}}
+let lang=DIRS[load('trk-lang')]?load('trk-lang'):'he';
+function T(k,...a){const d=I18N[lang];const v=k in d?d[k]:I18N.he[k];return typeof v==='function'?v(...a):v}
+function applyLang(){
+  document.documentElement.lang=lang;document.documentElement.dir=DIRS[lang];document.title=T('title');
+  document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=T(e.dataset.i18n)});
+  $('lang').value=lang;
+}
+
+/* ---------- geometry ---------- */
+const STEP=0.75; // meters per step
+const R=6371000,rad=d=>d*Math.PI/180;
+function hav(a,b){const dLa=rad(b[0]-a[0]),dLo=rad(b[1]-a[1]),s=Math.sin(dLa/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(s))}
+// flat x/y in meters around an origin (east, north): plenty accurate for a field
+function projector(o){const kx=Math.cos(rad(o[0]))*111320,ky=110540;return p=>[(p[1]-o[1])*kx,(p[0]-o[0])*ky]}
+function rdp(pts,eps){
+  if(pts.length<3)return pts.map((_,i)=>i);
+  const keep=new Uint8Array(pts.length);keep[0]=keep[pts.length-1]=1;const st=[[0,pts.length-1]];
+  while(st.length){const [a,b]=st.pop();let md=0,mi=-1;const A=pts[a],B=pts[b],dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy)||1;
+    for(let i=a+1;i<b;i++){const d=Math.abs(dy*(pts[i][0]-A[0])-dx*(pts[i][1]-A[1]))/L;if(d>md){md=d;mi=i}}
+    if(md>eps){keep[mi]=1;st.push([a,mi],[mi,b])}}
+  const out=[];keep.forEach((k,i)=>{if(k)out.push(i)});return out;
+}
+// everything a laid track needs for following: flat points, distance along it, and the turns
+function prepare(tr){
+  const P=projector(tr.pts[0]),xy=tr.pts.map(P),cum=[0];
+  for(let i=1;i<xy.length;i++)cum.push(cum[i-1]+Math.hypot(xy[i][0]-xy[i-1][0],xy[i][1]-xy[i-1][1]));
+  const keep=rdp(xy,4),turns=[];
+  for(let k=1;k<keep.length-1;k++){
+    const a=xy[keep[k-1]],b=xy[keep[k]],c=xy[keep[k+1]],u=[b[0]-a[0],b[1]-a[1]],v=[c[0]-b[0],c[1]-b[1]];
+    if(Math.hypot(...u)<6||Math.hypot(...v)<6)continue;
+    let ang=Math.atan2(u[0]*v[1]-u[1]*v[0],u[0]*v[0]+u[1]*v[1])*180/Math.PI; // + = left (counterclockwise, north up)
+    if(Math.abs(ang)>=35)turns.push({i:keep[k],cum:cum[keep[k]],dir:ang>0?'left':'right',ang:Math.round(Math.abs(ang)),ll:tr.pts[keep[k]]});
+  }
+  return{P,xy,cum,len:cum[cum.length-1],turns};
+}
+// closest point of the laid track to p, preferring the stretch near the handler's last progress
+function locate(g,p,last){
+  const q=g.P(p);
+  const scan=(lo,hi)=>{let best=null;for(let i=0;i<g.xy.length-1;i++){if(g.cum[i+1]<lo||g.cum[i]>hi)continue;
+    const a=g.xy[i],b=g.xy[i+1],dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy||1,f=Math.max(0,Math.min(1,((q[0]-a[0])*dx+(q[1]-a[1])*dy)/L2));
+    const d=Math.hypot(q[0]-a[0]-dx*f,q[1]-a[1]-dy*f);if(!best||d<best.d)best={d,cum:g.cum[i]+f*(g.cum[i+1]-g.cum[i])}}return best};
+  let r=last!=null?scan(last-30,last+80):null;
+  if(!r||r.d>20)r=scan(-1,Infinity);
+  return r;
+}
+const fmtT=ms=>{const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
+const steps=m=>Math.round(m/STEP);
+
+/* ---------- storage ---------- */
+// a track: {id,name,start,end,pts:[[lat,lng,t]],arts:[{ll,cum,t}],runs:[{start,end,age,found,path,maxDev,onPct,prog}]}
+function tracks(){try{return JSON.parse(load('gps-tracks')||'[]')}catch(e){return[]}}
+function saveTracks(a){store('gps-tracks',JSON.stringify(a))}
+const pathLen=pts=>{let s=0;for(let i=1;i<pts.length;i++)s+=hav(pts[i-1],pts[i]);return s};
+
+/* ---------- small UI helpers ---------- */
+let toastTimer=null;
+function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true},2200)}
+function ask(text,yes){return new Promise(res=>{$('askText').textContent=text;$('askYes').textContent=yes;const d=$('askDlg');
+  const done=v=>{d.close();$('askYes').onclick=$('askNo').onclick=null;res(v)};$('askYes').onclick=()=>done(true);$('askNo').onclick=()=>done(false);d.showModal()})}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+let wake=null;
+async function keepAwake(on){
+  try{if(on){if(!wake&&navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}else if(wake){await wake.release();wake=null}}catch(e){wake=null}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&mode)keepAwake(true).catch(()=>{})});
+
+/* ---------- home ---------- */
+let tick=null;
+function renderHome(){
+  mode=null;$('screen').hidden=true;$('home').hidden=false;
+  const list=tracks().sort((a,b)=>b.start-a.start),ul=$('list');ul.innerHTML='';
+  $('empty').hidden=list.length>0;
+  list.forEach(tr=>{
+    const li=document.createElement('li');li.className='card';
+    const m=Math.round(pathLen(tr.pts)),run=tr.runs&&tr.runs[0];
+    li.innerHTML=`<div class="name"></div><div class="meta"></div><div class="age"></div><div class="acts"><button class="btn go"></button><button class="btn ghost rm"></button></div>`;
+    li.querySelector('.name').textContent=tr.name;
+    li.querySelector('.meta').textContent=new Date(tr.start).toLocaleString(lang==='he'?'he-IL':lang,{dateStyle:'short',timeStyle:'short'})+' · '+T('listMeta',m,steps(m),tr.arts.length)+(tr.runs&&tr.runs.length?' · '+T('runs',tr.runs.length):'');
+    const age=li.querySelector('.age');
+    age.dataset.start=tr.start;age.dataset.run=run?run.age:'';
+    li.querySelector('.go').textContent=T('follow');li.querySelector('.rm').textContent=T('del');
+    li.querySelector('.go').onclick=()=>startFollow(tr.id);
+    li.querySelector('.rm').onclick=async()=>{if(await ask(T('delAsk',tr.name),T('del'))){saveTracks(tracks().filter(x=>x.id!==tr.id));renderHome()}};
+    ul.appendChild(li);
+  });
+  const lay=draftLay(),run=draftRun();
+  $('draftBox').hidden=!(lay||run);
+  if(lay)$('draftText').textContent=T('draftLay');
+  else if(run){const tr=tracks().find(x=>x.id===run.id);$('draftText').textContent=T('draftRun',tr?tr.name:'');}
+  clearInterval(tick);tick=setInterval(tickHome,1000);tickHome();
+}
+function tickHome(){
+  document.querySelectorAll('#list .age').forEach(e=>{e.textContent=e.dataset.run?T('trackedAfter',fmtT(+e.dataset.run)):T('agedFor',fmtT(Date.now()-+e.dataset.start))});
+}
+const draftLay=()=>{try{return JSON.parse(load('gps-lay')||'null')}catch(e){return null}};
+const draftRun=()=>{try{return JSON.parse(load('gps-run')||'null')}catch(e){return null}};
+$('draftResume').onclick=()=>{const l=draftLay(),r=draftRun();if(l)startLay(l);else if(r)startFollow(r.id,r)};
+$('draftDiscard').onclick=()=>{drop('gps-lay');drop('gps-run');renderHome()};
+$('newTrack').onclick=()=>startLay(null);
+$('lang').onchange=()=>{lang=DIRS[$('lang').value]?$('lang').value:'he';store('trk-lang',lang);applyLang();if(mode)refreshScreen();else renderHome()};
+
+/* ---------- map ---------- */
+let map=null,layers={},sat=true,follow=true,meMk=null,accC=null;
+function ensureMap(){
+  if(map){setTimeout(()=>map.invalidateSize(),0);return}
+  map=L.map('map',{zoomControl:false,attributionControl:true});L.control.zoom({position:'bottomright'}).addTo(map);map.setView([31.5,34.9],7);
+  layers.sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:21,maxNativeZoom:19,attribution:'Imagery © Esri'});
+  layers.map=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21,maxNativeZoom:19,attribution:'© OpenStreetMap'});
+  layers.sat.addTo(map);
+  map.on('dragstart',()=>setFollow(false));
+}
+function setFollow(v){follow=v;$('followBtn').setAttribute('aria-pressed',String(v));if(v&&lastPos)map.panTo(lastPos)}
+$('followBtn').onclick=()=>setFollow(!follow);
+$('layerBtn').onclick=()=>{sat=!sat;map.removeLayer(sat?layers.map:layers.sat);(sat?layers.sat:layers.map).addTo(map);$('layerBtn').textContent=sat?T('layerMap'):T('layerSat')};
+const flagIcon=()=>L.divIcon({className:'mk-flag',iconSize:[30,34],iconAnchor:[4,32],html:'<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M4 33V3" stroke="#222" stroke-width="2.5" stroke-linecap="round"/><path d="M5 3h20l-5 6 5 6H5z" fill="#E4572E" stroke="#fff" stroke-width="1.5"/></svg>'});
+const artIcon=(k,found)=>L.divIcon({className:'mk-art'+(found?' found':''),iconSize:[34,34],iconAnchor:[17,17],html:`<span><b>${k}</b></span>`});
+const meIcon=()=>L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="mk-me"></div>'});
+function casedLine(pts,color,dash){
+  const g=L.layerGroup();
+  L.polyline(pts,{color:'#fff',weight:8,opacity:.85,interactive:false}).addTo(g);
+  L.polyline(pts,{color,weight:4,dashArray:dash||null,interactive:false}).addTo(g);
+  return g;
+}
+
+/* ---------- GPS ---------- */
+let watchId=null,lastPos=null,lastAcc=null,onFix=null;
+function startGps(cb){
+  onFix=cb;
+  if(!navigator.geolocation){banner(T('gpsNone'),'bad');return}
+  if(watchId!=null)return;
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    lastPos=[pos.coords.latitude,pos.coords.longitude];lastAcc=Math.round(pos.coords.accuracy);
+    if(!meMk){meMk=L.marker(lastPos,{icon:meIcon(),zIndexOffset:1000,interactive:false}).addTo(map);accC=L.circle(lastPos,{radius:lastAcc,color:'#1F6FEB',weight:1,fillOpacity:.08,interactive:false}).addTo(map);map.setView(lastPos,18)}
+    else{meMk.setLatLng(lastPos);accC.setLatLng(lastPos).setRadius(lastAcc)}
+    if(follow)map.panTo(lastPos,{animate:false});
+    onFix&&onFix(lastPos,lastAcc,pos.timestamp||Date.now());
+  },err=>{banner(err.code===1?T('gpsDenied'):T('waitGps'),err.code===1?'bad':'')},{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+}
+function stopGps(){if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=null;onFix=null}
+const GOOD_ACC=25; // ignore fixes worse than this (meters) when recording
+
+/* ---------- screen chrome ---------- */
+let mode=null; // 'lay' | 'follow'
+function banner(text,kind){const b=$('banner');b.hidden=!text;b.textContent=text||'';b.className='banner'+(kind?' '+kind:'')}
+function setStats(items){$('stats').innerHTML=items.map(([k,v,c])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}</div></div>`).join('')}
+function openScreen(title){
+  $('home').hidden=true;$('screen').hidden=false;$('sTitle').textContent=title;
+  ensureMap();clearInterval(tick);
+  $('layerBtn').textContent=sat?T('layerMap'):T('layerSat');
+  keepAwake(true);
+}
+function clearMap(){if(!map)return;map.eachLayer(l=>{if(l!==layers.sat&&l!==layers.map)map.removeLayer(l)});meMk=null;accC=null}
+$('exitBtn').onclick=()=>{stopGps();keepAwake(false);clearInterval(tick);clearMap();lastPos=null;renderHome()};
+function refreshScreen(){if(mode==='lay')renderLay();else renderFollow()}
+
+/* ---------- laying ---------- */
+// state while laying: {start,pts,arts}; saved after every change so a reload can continue
+let lay=null,layLine=null,layArtMk=[],layFlag=null;
+function startLay(draft){
+  mode='lay';lay=draft;openScreen(T('layTitle'));clearMap();layLine=null;layArtMk=[];layFlag=null;
+  if(lay)drawLay();
+  startGps((p,acc,t)=>{
+    if(lay&&acc<=GOOD_ACC){const last=lay.pts[lay.pts.length-1];if(!last||hav(last,p)>=2){lay.pts.push([p[0],p[1],t]);store('gps-lay',JSON.stringify(lay));drawLay()}}
+    renderLay();
+  });
+  clearInterval(tick);tick=setInterval(renderLay,1000);
+  renderLay();
+}
+function drawLay(){
+  if(layLine)map.removeLayer(layLine);
+  layLine=casedLine(lay.pts.map(p=>[p[0],p[1]]),'#2F9E55').addTo(map);
+  if(!layFlag&&lay.pts.length)layFlag=L.marker(lay.pts[0],{icon:flagIcon(),interactive:false}).addTo(map);
+  layArtMk.forEach(m=>map.removeLayer(m));layArtMk=lay.arts.map((a,k)=>L.marker(a.ll,{icon:artIcon(k+1),interactive:false}).addTo(map));
+}
+function renderLay(){
+  if(mode!=='lay')return;
+  const m=lay?Math.round(pathLen(lay.pts)):0;
+  setStats([[T('sTime'),lay?fmtT(Date.now()-lay.start):'0:00'],[T('sDist'),steps(m)],[T('sArts'),lay?lay.arts.length:0],[T('sGps'),lastAcc!=null?'±'+lastAcc:'–',lastAcc!=null&&lastAcc>GOOD_ACC?'bad':'']]);
+  const mb=$('mainBtn'),sb=$('sideBtn');
+  mb.innerHTML=lay?'<svg class="flagico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg><span></span>':'<svg class="flagico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h12l-3 4 3 4H6z" fill="currentColor"/></svg><span></span>';
+  mb.querySelector('span').textContent=lay?T('stopLay'):T('startLay');
+  mb.className=lay?'btn warn':'btn';mb.disabled=!lay&&!lastPos;
+  sb.textContent=T('markArt');sb.disabled=!lay||!lastPos;
+  $('hintLine').textContent=lay?T('layHint'):T('layReady');
+  if(!lastPos)banner(T('waitGps'));else if(lastAcc>GOOD_ACC)banner(T('gpsWeak',lastAcc),'bad');else banner('');
+}
+function layMain(){
+  if(!lay){ // start: the flag goes where you stand
+    if(!lastPos)return;
+    lay={start:Date.now(),pts:[[lastPos[0],lastPos[1],Date.now()]],arts:[]};
+    store('gps-lay',JSON.stringify(lay));drawLay();buzz(80);renderLay();return;
+  }
+  // finish: add the last position, then name and save
+  if(lastPos&&hav(lay.pts[lay.pts.length-1],lastPos)>=1)lay.pts.push([lastPos[0],lastPos[1],Date.now()]);
+  if(pathLen(lay.pts)<5){toast(T('tooShort'));return}
+  lay.end=Date.now();store('gps-lay',JSON.stringify(lay));
+  const m=Math.round(pathLen(lay.pts)),d=new Date(lay.start);
+  $('nameIn').value=T('defName',d.toLocaleDateString(lang==='he'?'he-IL':lang,{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString(lang==='he'?'he-IL':lang,{hour:'2-digit',minute:'2-digit'}));
+  $('saveMeta').textContent=T('saveMeta',m,steps(m),lay.arts.length,fmtT(lay.end-lay.start));
+  $('saveDlg').showModal();setTimeout(()=>$('nameIn').select(),50);
+}
+function layMark(){
+  if(!lay||!lastPos)return;
+  const last=lay.pts[lay.pts.length-1];
+  if(hav(last,lastPos)>=1)lay.pts.push([lastPos[0],lastPos[1],Date.now()]);
+  lay.arts.push({ll:[lastPos[0],lastPos[1]],cum:pathLen(lay.pts),t:Date.now()});
+  store('gps-lay',JSON.stringify(lay));drawLay();buzz(60);toast(T('artMarked',lay.arts.length));renderLay();
+}
+$('saveForm').onsubmit=e=>{
+  e.preventDefault();
+  const name=$('nameIn').value.trim()||$('nameIn').placeholder||T('defName','');
+  const tr={id:'t'+Date.now().toString(36),name,start:lay.start,end:lay.end,pts:lay.pts,arts:lay.arts.map(a=>({ll:a.ll,cum:a.cum,t:a.t})),runs:[]};
+  const all=tracks();all.push(tr);saveTracks(all);drop('gps-lay');lay=null;$('saveDlg').close();
+  stopGps();keepAwake(false);clearMap();toast(T('saved'));renderHome();
+};
+$('saveDiscard').onclick=async()=>{$('saveDlg').close();if(await ask(T('discardAsk'),T('discardYes'))){drop('gps-lay');lay=null;stopGps();keepAwake(false);clearMap();renderHome()}else $('saveDlg').showModal()};
+
+/* ---------- following ---------- */
+// state while tracking: {id,start,age,found:[],path:[[lat,lng,t,dev]],prog}
+let tr=null,geo=null,run=null,runLine=null,artMk=[],wasOff=false,lastProg=null;
+const OFF=10; // meters from the laid track that count as "off"
+function startFollow(id,resume){
+  tr=tracks().find(x=>x.id===id);if(!tr)return renderHome();
+  mode='follow';run=resume||null;openScreen(tr.name);clearMap();runLine=null;lastProg=run?run.prog:null;wasOff=false;
+  geo=prepare(tr);
+  casedLine(tr.pts.map(p=>[p[0],p[1]]),'#2F9E55').addTo(map);
+  geo.turns.forEach(t=>L.marker(t.ll,{icon:L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div class="mk-turn"></div>'}),interactive:false}).addTo(map));
+  L.marker(tr.pts[0],{icon:flagIcon(),interactive:false}).addTo(map);
+  drawArts();if(run)drawRun();
+  map.fitBounds(L.latLngBounds(tr.pts.map(p=>[p[0],p[1]])).pad(0.2));setFollow(false);
+  startGps((p,acc,t)=>{
+    const loc=locate(geo,p,lastProg);
+    if(run&&acc<=GOOD_ACC){
+      if(loc.d<=OFF*2)lastProg=Math.max(lastProg||0,loc.cum);
+      const last=run.path[run.path.length-1];
+      if(!last||hav(last,p)>=2){run.path.push([p[0],p[1],t,Math.round(loc.d)]);run.prog=lastProg;store('gps-run',JSON.stringify(run));drawRun()}
+      const off=loc.d>OFF;if(off&&!wasOff)buzz([200,100,200]);wasOff=off;
+    }
+    curLoc=loc;renderFollow();
+  });
+  clearInterval(tick);tick=setInterval(renderFollow,1000);renderFollow();
+}
+let curLoc=null;
+function drawArts(){
+  artMk.forEach(m=>map.removeLayer(m));
+  artMk=tr.arts.map((a,k)=>{const f=run&&run.found.includes(k);const mk=L.marker(a.ll,{icon:artIcon(k+1,f)}).addTo(map);mk.on('click',()=>toggleFound(k));return mk});
+}
+function drawRun(){if(runLine)map.removeLayer(runLine);runLine=casedLine(run.path.map(p=>[p[0],p[1]]),'#7B4FD6','8 8').addTo(map)}
+function toggleFound(k){
+  if(!run)return;
+  const i=run.found.indexOf(k);
+  if(i>=0){run.found.splice(i,1);toast(T('unfoundMsg',k+1))}else{run.found.push(k);buzz(60);toast(run.found.length===tr.arts.length?T('allFound'):T('foundMsg',k+1))}
+  store('gps-run',JSON.stringify(run));drawArts();renderFollow();
+}
+function renderFollow(){
+  if(mode!=='follow')return;
+  const age=run?run.age:Date.now()-tr.start,n=tr.arts.length,f=run?run.found.length:0;
+  const d=curLoc?Math.round(curLoc.d):null;
+  setStats([[T('sAge'),fmtT(age)],[T('sRun'),run?fmtT(Date.now()-run.start):'–'],[T('sOff'),d!=null?T('m',d):'–',d==null?'':d>OFF?'bad':'ok'],[T('sFound'),`${f}/${n}`]]);
+  const mb=$('mainBtn'),sb=$('sideBtn');
+  mb.textContent=run?T('stopRun'):T('startRun');mb.className=run?'btn warn':'btn';mb.disabled=false;
+  sb.textContent=T('artFound');sb.disabled=!run||f===n;
+  $('hintLine').textContent=run?T('runHint'):T('runReady');
+  // banner: off-track warning first, then a close article, then the next turn
+  if(!lastPos){banner(T('waitGps'));return}
+  if(lastAcc>GOOD_ACC){banner(T('gpsWeak',lastAcc),'bad');return}
+  if(!run||!curLoc){banner('');return}
+  if(curLoc.d>OFF){banner(T('offBy',Math.round(curLoc.d)),'bad');return}
+  const prog=lastProg||0;
+  const near=tr.arts.map((a,k)=>({k,ahead:a.cum-prog})).filter(x=>!run.found.includes(x.k)&&x.ahead>-8&&x.ahead<15).sort((a,b)=>a.ahead-b.ahead)[0];
+  if(near){banner(T('nearArt',near.k+1).replace('{m}',Math.max(0,Math.round(near.ahead))),'ok');return}
+  const nt=geo.turns.find(t=>t.cum>prog+3);
+  banner(nt?T('nextTurn',T(nt.dir),Math.round(nt.cum-prog)):T('endIn',Math.max(0,Math.round(geo.len-prog))),'ok');
+}
+async function followMain(){
+  if(!run){
+    run={id:tr.id,start:Date.now(),age:Date.now()-tr.start,found:[],path:[],prog:0};lastProg=0;
+    if(lastPos)run.path.push([lastPos[0],lastPos[1],Date.now(),curLoc?Math.round(curLoc.d):0]);
+    store('gps-run',JSON.stringify(run));setFollow(true);buzz(80);drawArts();renderFollow();return;
+  }
+  if(!(await ask(T('stopAsk'),T('stopYes'))))return;
+  run.end=Date.now();
+  const devs=run.path.map(p=>p[3]),maxDev=devs.length?Math.max(...devs):0,onPct=devs.length?Math.round(100*devs.filter(x=>x<=OFF).length/devs.length):0;
+  const prog=Math.min(100,Math.round(100*(run.prog||0)/geo.len));
+  const rec={start:run.start,end:run.end,age:run.age,found:run.found.slice(),path:run.path,maxDev,onPct,prog};
+  const all=tracks(),t=all.find(x=>x.id===tr.id);if(t){t.runs=t.runs||[];t.runs.push(rec);saveTracks(all)}
+  drop('gps-run');run=null;renderFollow();
+  const rows=[[T('sumAge'),fmtT(rec.age)],[T('sumTime'),fmtT(rec.end-rec.start)],[T('sumFound'),T('sumOf',rec.found.length,tr.arts.length)],[T('sumMax'),T('m',maxDev)],[T('sumOn'),onPct+'%'],[T('sumProg'),prog+'%']];
+  $('sumList').innerHTML='';rows.forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;$('sumList').append(dt,dd)});
+  $('sumDlg').showModal();
+}
+// "article found" marks the closest unfound article along the track (or the next one in order)
+function followSide(){
+  if(!run)return;
+  const prog=lastProg||0,left=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-prog)})).filter(x=>!run.found.includes(x.k)).sort((a,b)=>a.d-b.d);
+  if(left.length)toggleFound(left[0].k);
+}
+$('sumClose').onclick=()=>$('sumDlg').close();
+$('mainBtn').onclick=()=>{if(mode==='lay')layMain();else followMain()};
+$('sideBtn').onclick=()=>{if(mode==='lay')layMark();else followSide()};
+
+/* ---------- start ---------- */
+applyLang();
+renderHome();
+})();
+</script>
+</body>
+</html>
