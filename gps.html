@@ -6,7 +6,7 @@
 <title>גישוש עם GPS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Secular+One&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 /* Layout: a field tool for one hand — saved-track list, then full-screen map views with a stats strip on top and big buttons at the bottom */
 :root{
@@ -83,6 +83,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
 
 /* map markers */
 .mk-flag svg{display:block}
+.maplibregl-ctrl-bottom-right{margin-bottom:6px}
 .mk-art{display:grid;place-items:center}
 .mk-art span{width:26px;height:26px;transform:rotate(45deg);background:#E9A93A;border:2px solid #fff;border-radius:4px;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mk-art b{transform:rotate(-45deg);color:#1B1406;font:700 13px var(--f-body)}
@@ -222,8 +223,7 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
 </dialog>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (function(){
 /* ---------- languages (shares the choice with the generator page) ---------- */
@@ -485,28 +485,81 @@ $('draftDiscard').onclick=()=>{drop('gps-lay');drop('gps-run');renderHome()};
 $('newTrack').onclick=()=>{startCompass();startLay(null)};
 $('lang').onchange=()=>{lang=DIRS[$('lang').value]?$('lang').value:'he';store('trk-lang',lang);applyLang();if(mode)refreshScreen();else renderHome()};
 
-/* ---------- map ---------- */
-let map=null,layers={},sat=true,follow=true,meMk=null,accC=null;
+/* ---------- map (MapLibre: drawn on the graphics chip, so moving and turning stay smooth) ---------- */
+// Points in this file are [lat, lng]; MapLibre wants [lng, lat].
+const lnglat=p=>[p[1],p[0]];
+let map=null,mapReady=false,readyQ=[],sat=true,follow=true,meMk=null,drawn=[],uid=0;
+function whenReady(fn){if(mapReady)fn();else readyQ.push(fn)}
 function ensureMap(){
-  if(map){setTimeout(()=>map.invalidateSize(),0);return}
-  map=L.map('map',{zoomControl:false,attributionControl:true,rotate:true,bearing:0,touchRotate:false,rotateControl:false,shiftKeyRotate:false});L.control.zoom({position:'bottomright'}).addTo(map);map.setView([31.5,34.9],7);
-  layers.sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:21,maxNativeZoom:19,attribution:'Imagery © Esri'});
-  layers.map=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21,maxNativeZoom:19,attribution:'© OpenStreetMap'});
-  layers.sat.addTo(map);
+  if(map){setTimeout(()=>map.resize(),0);return}
+  map=new maplibregl.Map({container:'map',center:[34.9,31.5],zoom:7,maxZoom:21,attributionControl:{compact:true},dragRotate:false,pitchWithRotate:false,
+    style:{version:8,sources:{
+      sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Imagery © Esri'},
+      osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'},
+      acc:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
+      layers:[{id:'sat',type:'raster',source:'sat'},{id:'osm',type:'raster',source:'osm',layout:{visibility:'none'}},
+        {id:'acc-fill',type:'fill',source:'acc',paint:{'fill-color':'#1F6FEB','fill-opacity':0.08}},
+        {id:'acc-line',type:'line',source:'acc',paint:{'line-color':'#1F6FEB','line-width':1}}]}});
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+  map.on('load',()=>{mapReady=true;readyQ.splice(0).forEach(f=>f())});
   map.on('dragstart',()=>setFollow(false));
-  syncRotBtn();
+  syncRotBtn();requestAnimationFrame(frame);
 }
-function setFollow(v){follow=v;$('followBtn').setAttribute('aria-pressed',String(v));if(v&&lastPos)map.panTo(lastPos)}
+function setFollow(v){follow=v;$('followBtn').setAttribute('aria-pressed',String(v))}
 $('followBtn').onclick=()=>setFollow(!follow);
-$('layerBtn').onclick=()=>{sat=!sat;map.removeLayer(sat?layers.map:layers.sat);(sat?layers.sat:layers.map).addTo(map);$('layerBtn').textContent=sat?T('layerMap'):T('layerSat')};
-const flagIcon=()=>L.divIcon({className:'mk-flag',iconSize:[30,34],iconAnchor:[4,32],html:'<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M4 33V3" stroke="#222" stroke-width="2.5" stroke-linecap="round"/><path d="M5 3h20l-5 6 5 6H5z" fill="#E4572E" stroke="#fff" stroke-width="1.5"/></svg>'});
-const artIcon=(k,found)=>L.divIcon({className:'mk-art'+(found?' found':''),iconSize:[34,34],iconAnchor:[17,17],html:`<span><b>${k}</b></span>`});
-const meIcon=()=>L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="mk-me"></div>'});
-function casedLine(pts,color,dash){
-  const g=L.layerGroup();
-  L.polyline(pts,{color:'#fff',weight:8,opacity:.85,interactive:false}).addTo(g);
-  L.polyline(pts,{color,weight:4,dashArray:dash||null,interactive:false}).addTo(g);
-  return g;
+$('layerBtn').onclick=()=>{sat=!sat;whenReady(()=>{map.setLayoutProperty('sat','visibility',sat?'visible':'none');map.setLayoutProperty('osm','visibility',sat?'none':'visible')});$('layerBtn').textContent=sat?T('layerMap'):T('layerSat')};
+function elFrom(html,cls){const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;return d}
+const FLAG_SVG='<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M4 33V3" stroke="#222" stroke-width="2.5" stroke-linecap="round"/><path d="M5 3h20l-5 6 5 6H5z" fill="#E4572E" stroke="#fff" stroke-width="1.5"/></svg>';
+// every marker and line drawn for a track goes into `drawn`, so leaving the screen clears them all
+function marker(ll,kind,opt){
+  opt=opt||{};let el,anchor='center',offset=[0,0];
+  if(kind==='flag'){el=elFrom(FLAG_SVG,'mk-flag');anchor='bottom-left';offset=[-4,2]}
+  else if(kind==='art')el=elFrom(`<span><b>${opt.k}</b></span>`,'mk-art'+(opt.found?' found':''));
+  else if(kind==='turn')el=elFrom('','mk-turn');
+  else el=elFrom('','mk-me');
+  el.style.width=kind==='art'?'34px':'';el.style.height=kind==='art'?'34px':'';
+  if(opt.onClick){el.style.cursor='pointer';el.addEventListener('click',e=>{e.stopPropagation();opt.onClick()})}
+  const m=new maplibregl.Marker({element:el,anchor,offset}).setLngLat(lnglat(ll)).addTo(map);
+  if(kind==='me')el.style.zIndex=5; // your position stays above articles and the flag
+  if(kind!=='me')drawn.push(m);return m;
+}
+function casedLine(pts,color,dashed){
+  const id='l'+(++uid),data={type:'Feature',geometry:{type:'LineString',coordinates:pts.map(lnglat)}};
+  const obj={id,remove(){if(!map.getSource(id))return;map.removeLayer(id+'c');map.removeLayer(id);map.removeSource(id)}};
+  whenReady(()=>{
+    map.addSource(id,{type:'geojson',data});
+    map.addLayer({id:id+'c',type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#fff','line-width':8,'line-opacity':0.85}});
+    map.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':dashed?'butt':'round'},paint:Object.assign({'line-color':color,'line-width':4},dashed?{'line-dasharray':[2,2]}:{})});
+  });
+  drawn.push(obj);return obj;
+}
+function fitTo(pts){
+  if(!pts.length)return;
+  let a=[Infinity,Infinity],b=[-Infinity,-Infinity];pts.forEach(p=>{a=[Math.min(a[0],p[1]),Math.min(a[1],p[0])];b=[Math.max(b[0],p[1]),Math.max(b[1],p[0])]});
+  map.fitBounds([a,b],{padding:50,duration:0,bearing:map.getBearing(),maxZoom:19});
+}
+function accCircle(ll,r){
+  const c=[],k=Math.cos(rad(ll[0]))*111320;
+  for(let i=0;i<=32;i++){const t=i/32*2*Math.PI;c.push([ll[1]+Math.cos(t)*r/k,ll[0]+Math.sin(t)*r/110540])}
+  whenReady(()=>map.getSource('acc').setData({type:'Feature',geometry:{type:'Polygon',coordinates:[c]}}));
+}
+// One animation loop: the position dot glides to each new GPS reading and the map eases to the phone's heading.
+let shownPos=null,shownBear=0;
+function frame(){
+  requestAnimationFrame(frame);
+  if(!map||!mode)return;
+  let moved=false;
+  if(lastPos&&meMk){
+    if(!shownPos)shownPos=lastPos.slice();
+    const dl=lastPos[0]-shownPos[0],dn=lastPos[1]-shownPos[1];
+    if(Math.abs(dl)>1e-8||Math.abs(dn)>1e-8){shownPos[0]+=dl*0.12;shownPos[1]+=dn*0.12;meMk.setLngLat(lnglat(shownPos));moved=true}
+  }
+  const want=mode==='view'||!cfg.rotate?0:(heading==null?shownBear:heading); // bearing = the compass direction shown at the top
+  const d=((want-shownBear+540)%360)-180,turn=Math.abs(d)>0.1;
+  if(turn)shownBear=(shownBear+d*0.12+360)%360;
+  if(follow&&shownPos&&(moved||turn||!map.isMoving()&&map.getBearing()!==shownBear))map.jumpTo({center:lnglat(shownPos),bearing:shownBear});
+  else if(turn)map.setBearing(shownBear);
 }
 
 /* ---------- GPS ---------- */
@@ -517,9 +570,8 @@ function startGps(cb){
   if(watchId!=null)return;
   watchId=navigator.geolocation.watchPosition(pos=>{
     lastPos=[pos.coords.latitude,pos.coords.longitude];lastAcc=Math.round(pos.coords.accuracy);
-    if(!meMk){meMk=L.marker(lastPos,{icon:meIcon(),zIndexOffset:1000,interactive:false}).addTo(map);accC=L.circle(lastPos,{radius:lastAcc,color:'#1F6FEB',weight:1,fillOpacity:.08,interactive:false}).addTo(map);map.setView(lastPos,18)}
-    else{meMk.setLatLng(lastPos);accC.setLatLng(lastPos).setRadius(lastAcc)}
-    if(follow)map.panTo(lastPos,{animate:false});
+    if(!meMk){meMk=marker(lastPos,'me');shownPos=lastPos.slice();if(follow)map.jumpTo({center:lnglat(lastPos),zoom:18})}
+    accCircle(lastPos,lastAcc);
     const c=pos.coords;if(!compassSeen&&c.heading!=null&&!isNaN(c.heading)&&(c.speed||0)>0.6)setHeading(c.heading);
     onFix&&onFix(lastPos,lastAcc,pos.timestamp||Date.now());
   },err=>{banner(err.code===1?T('gpsDenied'):T('waitGps'),err.code===1?'bad':'')},{enableHighAccuracy:true,maximumAge:0,timeout:30000});
@@ -537,7 +589,7 @@ function openScreen(title){
   $('layerBtn').textContent=sat?T('layerMap'):T('layerSat');
   keepAwake(true);
 }
-function clearMap(){if(!map)return;map.eachLayer(l=>{if(l!==layers.sat&&l!==layers.map)map.removeLayer(l)});meMk=null;accC=null}
+function clearMap(){if(!map)return;drawn.splice(0).forEach(x=>x.remove());if(meMk){meMk.remove();meMk=null}shownPos=null;whenReady(()=>map.getSource('acc').setData({type:'FeatureCollection',features:[]}))}
 $('exitBtn').onclick=()=>{speechStop();stopGps();keepAwake(false);clearInterval(tick);clearMap();lastPos=null;renderHome()};
 function refreshScreen(){syncRotBtn();if(mode==='lay')renderLay();else if(mode==='view')renderView();else renderFollow()}
 
@@ -555,10 +607,11 @@ function startLay(draft){
   renderLay();
 }
 function drawLay(){
-  if(layLine)map.removeLayer(layLine);
-  layLine=casedLine(lay.pts.map(p=>[p[0],p[1]]),'#2F9E55').addTo(map);
-  if(!layFlag&&lay.pts.length)layFlag=L.marker(lay.pts[0],{icon:flagIcon(),interactive:false}).addTo(map);
-  layArtMk.forEach(m=>map.removeLayer(m));layArtMk=lay.arts.map((a,k)=>L.marker(a.ll,{icon:artIcon(k+1),interactive:false}).addTo(map));
+  const data={type:'Feature',geometry:{type:'LineString',coordinates:lay.pts.map(lnglat)}};
+  if(!layLine)layLine=casedLine(lay.pts,'#2F9E55');
+  else whenReady(()=>{const s=map.getSource(layLine.id);s&&s.setData(data)});
+  if(!layFlag&&lay.pts.length)layFlag=marker(lay.pts[0],'flag');
+  layArtMk.forEach(m=>m.remove());layArtMk=lay.arts.map((a,k)=>marker(a.ll,'art',{k:k+1}));
 }
 function renderLay(){
   if(mode!=='lay')return;
@@ -612,19 +665,19 @@ function startFollow(id,resume){
   const finished=!resume&&tr.runs&&tr.runs.length;
   mode=finished?'view':'follow';setTimeout(syncRotBtn,0);run=resume||null;openScreen(tr.name);clearMap();runLine=null;lastProg=run?run.prog:null;wasOff=false;
   geo=prepare(tr);
-  casedLine(tr.pts.map(p=>[p[0],p[1]]),'#2F9E55').addTo(map);
-  geo.turns.forEach(t=>L.marker(t.ll,{icon:L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div class="mk-turn"></div>'}),interactive:false}).addTo(map));
-  L.marker(tr.pts[0],{icon:flagIcon(),interactive:false}).addTo(map);
+  casedLine(tr.pts,'#2F9E55');
+  geo.turns.forEach(t=>marker(t.ll,'turn'));
+  marker(tr.pts[0],'flag');
   if(finished){
     const r=tr.runs[tr.runs.length-1];run=null;viewRun=r;
-    artMk=tr.arts.map((a,k)=>L.marker(a.ll,{icon:artIcon(k+1,r.found.includes(k)),interactive:false}).addTo(map));
-    if(r.path.length)casedLine(r.path.map(p=>[p[0],p[1]]),'#7B4FD6','8 8').addTo(map);
-    map.setBearing&&map.setBearing(0);
-    map.fitBounds(L.latLngBounds(tr.pts.map(p=>[p[0],p[1]])).pad(0.2));setFollow(false);
+    artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k)}));
+    if(r.path.length)casedLine(r.path,'#7B4FD6',true);
+    shownBear=0;map.setBearing(0);
+    fitTo(tr.pts.concat(r.path));setFollow(false);
     clearInterval(tick);renderView();return;
   }
   drawArts();if(run)drawRun();
-  map.fitBounds(L.latLngBounds(tr.pts.map(p=>[p[0],p[1]])).pad(0.2));setFollow(false);
+  fitTo(tr.pts);setFollow(!!run);
   startGps((p,acc,t)=>{
     const loc=locate(geo,p,lastProg);
     if(run&&acc<=GOOD_ACC){
@@ -639,10 +692,13 @@ function startFollow(id,resume){
 }
 let curLoc=null,viewRun=null;
 function drawArts(){
-  artMk.forEach(m=>map.removeLayer(m));
-  artMk=tr.arts.map((a,k)=>{const f=run&&run.found.includes(k);const mk=L.marker(a.ll,{icon:artIcon(k+1,f)}).addTo(map);mk.on('click',()=>toggleFound(k));return mk});
+  artMk.forEach(m=>m.remove());
+  artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:!!(run&&run.found.includes(k)),onClick:()=>toggleFound(k)}));
 }
-function drawRun(){if(runLine)map.removeLayer(runLine);runLine=casedLine(run.path.map(p=>[p[0],p[1]]),'#7B4FD6','8 8').addTo(map)}
+function drawRun(){
+  if(!runLine){runLine=casedLine(run.path,'#7B4FD6',true);return}
+  whenReady(()=>{const s=map.getSource(runLine.id);s&&s.setData({type:'Feature',geometry:{type:'LineString',coordinates:run.path.map(lnglat)}})});
+}
 function toggleFound(k){
   if(!run)return;
   const i=run.found.indexOf(k);
@@ -758,15 +814,8 @@ function onOrient(e){
   if(h==null)return;
   compassSeen=true;setHeading((h+screenAngle())%360);
 }
-function setHeading(h){
-  if(heading==null)heading=h;else{const d=((h-heading+540)%360)-180;heading=(heading+d*0.3+360)%360} // smooth out jitter
-  applyBearing();
-}
-function applyBearing(force){
-  if(!map||!map.setBearing||mode==='view')return;
-  const now=Date.now();if(!force&&now-lastBearing<120)return;lastBearing=now;
-  map.setBearing(cfg.rotate&&heading!=null?-heading:0);
-}
+function setHeading(h){heading=h} // the animation loop eases the map toward it
+function applyBearing(){if(!cfg.rotate)heading=heading} // kept for callers; the loop reads cfg.rotate every frame
 // must start from a tap: iPhones ask for permission to read the compass
 function startCompass(){
   if(orientOn||!cfg.rotate)return;
