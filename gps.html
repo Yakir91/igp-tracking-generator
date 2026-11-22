@@ -54,6 +54,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
 .card .age{font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
 .card .acts{display:flex;gap:8px;flex-wrap:wrap}
 .card .acts .btn{padding:9px 14px;font-size:16px}
+.card .done{font-size:13px;font-weight:700;color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:1px 8px;margin-inline-start:6px;vertical-align:middle}
 .empty{color:var(--muted);background:var(--paper);border:1px dashed var(--line);border-radius:12px;padding:16px}
 .draftbox{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--paper);border:1px solid var(--flag);border-radius:12px;padding:12px 14px}
 
@@ -95,6 +96,12 @@ dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);c
 dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog h3{font-family:var(--f-display);font-weight:400;font-size:21px;margin:0 0 10px}
 dialog label{display:flex;flex-direction:column;gap:6px;font-weight:600}
+dialog select{font:17px var(--f-body);padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.setgrid{display:flex;flex-direction:column;gap:12px}
+.setgrid .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+dialog label.chk{flex-direction:row;align-items:center;gap:10px;font-weight:600}
+dialog label.chk input{width:22px;height:22px}
+.small{font-size:14px;color:var(--muted);margin:0}
 dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 .dacts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
 .sum{display:grid;grid-template-columns:1fr auto;gap:6px 14px;margin:0}
@@ -109,9 +116,12 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
 <main id="home" class="home gut">
   <div class="topbar">
     <a class="backlink" href="index.html" data-i18n="backGen">מחולל המסלולים</a>
-    <select id="lang" class="langsel" aria-label="שפה">
-      <option value="he">עברית</option><option value="en">English</option><option value="de">Deutsch</option>
-    </select>
+    <span style="display:flex;gap:8px">
+      <button class="iconbtn" id="setBtnHome" data-i18n="settings">הגדרות</button>
+      <select id="lang" class="langsel" aria-label="שפה">
+        <option value="he">עברית</option><option value="en">English</option><option value="de">Deutsch</option>
+      </select>
+    </span>
   </div>
   <header>
     <h1 data-i18n="title">גישוש עם GPS</h1>
@@ -138,12 +148,14 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
   <div class="shead gut">
     <button class="iconbtn" id="exitBtn" data-i18n="back"></button>
     <div class="ttl" id="sTitle"></div>
+    <button class="iconbtn" id="setBtn" data-i18n="settings"></button>
   </div>
   <div class="stats" id="stats"></div>
   <div class="mapwrap">
     <div id="map" class="map"></div>
     <div class="banner" id="banner" hidden></div>
     <div class="mapbtns">
+      <button id="rotBtn" aria-pressed="false"></button>
       <button id="followBtn" aria-pressed="true" data-i18n="center"></button>
       <button id="layerBtn"></button>
     </div>
@@ -180,9 +192,38 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
   <dl class="sum" id="sumList"></dl>
   <div class="dacts"><button class="btn" id="sumClose" data-i18n="close"></button></div>
 </dialog>
+<dialog id="setDlg">
+  <form method="dialog" id="setForm">
+    <h3 data-i18n="setTitle"></h3>
+    <div class="setgrid">
+      <div class="row">
+        <label for="sAlert"><span data-i18n="setAlert"></span>
+          <select id="sAlert"><option value="none" data-i18n="alNone"></option><option value="vibrate" data-i18n="alVib"></option><option value="voice" data-i18n="alVoice"></option></select></label>
+        <label for="sAlertDist"><span data-i18n="setAlertDist"></span><select id="sAlertDist"></select></label>
+      </div>
+      <label for="sLead"><span data-i18n="setLead"></span><select id="sLead"></select></label>
+      <p class="small" data-i18n="leadNote"></p>
+      <label class="chk" for="sRotate"><input type="checkbox" id="sRotate"><span data-i18n="setRotate"></span></label>
+    </div>
+    <div class="dacts">
+      <button type="button" class="btn ghost" id="setTest" data-i18n="setTest"></button>
+      <button type="submit" class="btn" data-i18n="save"></button>
+    </div>
+  </form>
+</dialog>
+<dialog id="linkDlg">
+  <h3 data-i18n="linkTitle"></h3>
+  <p class="small" data-i18n="linkNote"></p>
+  <label for="linkIn" style="margin-top:8px"><input id="linkIn" readonly dir="ltr"></label>
+  <div class="dacts">
+    <button class="btn ghost" id="linkClose" data-i18n="close"></button>
+    <button class="btn" id="linkCopy" data-i18n="copyLink"></button>
+  </div>
+</dialog>
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
 <script>
 (function(){
 /* ---------- languages (shares the choice with the generator page) ---------- */
@@ -222,7 +263,19 @@ he:{
   stopAsk:'לסיים את הגישוש?',stopYes:'סיים',
   sumTitle:'סיכום הגישוש',sumAge:'גיל המסלול בהתחלה',sumTime:'זמן גישוש',sumFound:'חפצים שנמצאו',sumOf:(f,n)=>`${f} מתוך ${n}`,
   sumMax:'הסטייה הגדולה ביותר',sumOn:'זמן על המסלול',sumProg:'התקדמות לאורך המסלול',close:'סגור',
-  center:'עקוב',layerSat:'לוויין',layerMap:'מפה',m:v=>`${v} מ'`
+  center:'עקוב',layerSat:'לוויין',layerMap:'מפה',m:v=>`${v} מ'`,
+  settings:'הגדרות',setTitle:'התראות ומפה',setAlert:'התראה לפני פנייה או חפץ',alNone:'ללא',alVib:'רטט',alVoice:'קולית',
+  setAlertDist:'כמה לפני',setLead:'הכלב הולך לפניי בערך',lead0:'0 (לפי הטלפון)',
+  leadNote:'הכלב בדרך כלל מקדים את המוביל. ההתראות והמרחקים לפנייה ולחפץ יחושבו לפי הנקודה שנמצאת המרחק הזה לפניך לאורך המסלול.',
+  setRotate:'סובב את המפה לפי כיוון הטלפון',setTest:'נסה התראה',
+  sayTurn:(d,m)=>`פנייה ${d} בעוד ${m} מטר`,sayArt:(k,m)=>`חפץ ${k} בעוד ${m} מטר`,
+  rotOn:'לפי הטלפון',rotOff:'צפון למעלה',noCompass:'הטלפון לא מדווח על כיוון. המפה תסתובב לפי כיוון ההליכה כשאתה זז.',
+  share:'שתף',shareText:n=>`מסלול גישוש: ${n}`,linkCopied:'הקישור הועתק',copyLink:'העתק קישור',linkTitle:'קישור למסלול',
+  linkNote:'שלח את הקישור לטלפון השני. כשפותחים אותו, העמוד מציע לשמור את המסלול.',
+  badLink:'הקישור למסלול פגום או חתוך. בקש מהשולח לשלוח אותו שוב.',alreadySaved:'המסלול הזה כבר שמור בטלפון.',
+  importAsk:(n,m,a)=>`התקבל מסלול "${n}" (${m} מ', ${a} חפצים). לשמור אותו?`,importYes:'שמור',imported:'המסלול נשמר',
+  viewResult:'צפה בתוצאה',done:'הושלם',showSum:'סיכום הגישוש',
+  doneHint:'הגישוש במסלול הזה הסתיים, ולכן אי אפשר לגשש בו שוב. כאן רואים את התוצאה.'
 },
 en:{
   title:'GPS tracking',
@@ -259,7 +312,19 @@ en:{
   stopAsk:'Finish this tracking run?',stopYes:'Finish',
   sumTitle:'Tracking summary',sumAge:'Track age at start',sumTime:'Tracking time',sumFound:'Articles found',sumOf:(f,n)=>`${f} of ${n}`,
   sumMax:'Largest deviation',sumOn:'Time on the track',sumProg:'Progress along the track',close:'Close',
-  center:'Follow',layerSat:'Satellite',layerMap:'Map',m:v=>`${v} m`
+  center:'Follow',layerSat:'Satellite',layerMap:'Map',m:v=>`${v} m`,
+  settings:'Settings',setTitle:'Alerts and map',setAlert:'Alert before a turn or article',alNone:'None',alVib:'Vibration',alVoice:'Voice',
+  setAlertDist:'How far before',setLead:'The dog walks ahead of me by about',lead0:'0 (use the phone)',
+  leadNote:'The dog is usually ahead of the handler. Alerts and distances to turns and articles use the point this far ahead of you along the track.',
+  setRotate:'Rotate the map with the phone',setTest:'Test alert',
+  sayTurn:(d,m)=>`Turn ${d} in ${m} meters`,sayArt:(k,m)=>`Article ${k} in ${m} meters`,
+  rotOn:'Phone heading',rotOff:'North up',noCompass:'This phone does not report a heading. The map turns with your walking direction once you move.',
+  share:'Share',shareText:n=>`Tracking track: ${n}`,linkCopied:'Link copied',copyLink:'Copy link',linkTitle:'Track link',
+  linkNote:'Send this link to the other phone. Opening it offers to save the track.',
+  badLink:'The track link is broken or cut off. Ask the sender to send it again.',alreadySaved:'This track is already saved on this phone.',
+  importAsk:(n,m,a)=>`You received the track "${n}" (${m} m, ${a} articles). Save it?`,importYes:'Save',imported:'Track saved',
+  viewResult:'View result',done:'Done',showSum:'Tracking summary',
+  doneHint:'This track has already been tracked, so it cannot be tracked again. This shows the result.'
 },
 de:{
   title:'GPS-Fährte',
@@ -296,7 +361,19 @@ de:{
   stopAsk:'Diesen Durchgang beenden?',stopYes:'Beenden',
   sumTitle:'Zusammenfassung',sumAge:'Liegezeit beim Start',sumTime:'Ausarbeitungszeit',sumFound:'Gefundene Gegenstände',sumOf:(f,n)=>`${f} von ${n}`,
   sumMax:'Größte Abweichung',sumOn:'Zeit auf der Fährte',sumProg:'Fortschritt entlang der Fährte',close:'Schließen',
-  center:'Folgen',layerSat:'Satellit',layerMap:'Karte',m:v=>`${v} m`
+  center:'Folgen',layerSat:'Satellit',layerMap:'Karte',m:v=>`${v} m`,
+  settings:'Einstellungen',setTitle:'Hinweise und Karte',setAlert:'Hinweis vor Winkel oder Gegenstand',alNone:'Keiner',alVib:'Vibration',alVoice:'Sprache',
+  setAlertDist:'Wie weit vorher',setLead:'Der Hund ist mir voraus um etwa',lead0:'0 (Handy-Position)',
+  leadNote:'Der Hund ist meist vor dem Hundeführer. Hinweise und Abstände zu Winkeln und Gegenständen gelten für den Punkt, der so weit vor dir auf der Fährte liegt.',
+  setRotate:'Karte mit dem Handy drehen',setTest:'Hinweis testen',
+  sayTurn:(d,m)=>`Winkel nach ${d} in ${m} Metern`,sayArt:(k,m)=>`Gegenstand ${k} in ${m} Metern`,
+  rotOn:'Handy-Richtung',rotOff:'Norden oben',noCompass:'Das Handy meldet keine Richtung. Die Karte dreht sich mit deiner Gehrichtung, sobald du dich bewegst.',
+  share:'Teilen',shareText:n=>`Fährte: ${n}`,linkCopied:'Link kopiert',copyLink:'Link kopieren',linkTitle:'Link zur Fährte',
+  linkNote:'Schick den Link an das andere Handy. Beim Öffnen wird angeboten, die Fährte zu speichern.',
+  badLink:'Der Link zur Fährte ist beschädigt oder abgeschnitten. Bitte den Absender, ihn erneut zu schicken.',alreadySaved:'Diese Fährte ist auf diesem Handy schon gespeichert.',
+  importAsk:(n,m,a)=>`Du hast die Fährte „${n}“ erhalten (${m} m, ${a} Gegenstände). Speichern?`,importYes:'Speichern',imported:'Fährte gespeichert',
+  viewResult:'Ergebnis ansehen',done:'Erledigt',showSum:'Zusammenfassung',
+  doneHint:'Diese Fährte wurde schon ausgearbeitet und kann nicht noch einmal ausgearbeitet werden. Hier siehst du das Ergebnis.'
 }};
 const DIRS={he:'rtl',en:'ltr',de:'ltr'};
 const $=id=>document.getElementById(id);
@@ -309,6 +386,7 @@ function applyLang(){
   document.documentElement.lang=lang;document.documentElement.dir=DIRS[lang];document.title=T('title');
   document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=T(e.dataset.i18n)});
   $('lang').value=lang;
+  if(typeof fillSettings==='function')fillSettings();
 }
 
 /* ---------- geometry ---------- */
@@ -378,13 +456,16 @@ function renderHome(){
   list.forEach(tr=>{
     const li=document.createElement('li');li.className='card';
     const m=Math.round(pathLen(tr.pts)),run=tr.runs&&tr.runs[0];
-    li.innerHTML=`<div class="name"></div><div class="meta"></div><div class="age"></div><div class="acts"><button class="btn go"></button><button class="btn ghost rm"></button></div>`;
+    const done=!!(tr.runs&&tr.runs.length);
+    li.innerHTML=`<div class="name"></div><div class="meta"></div><div class="age"></div><div class="acts"><button class="btn go"></button><button class="btn ghost sh"></button><button class="btn ghost rm"></button></div>`;
     li.querySelector('.name').textContent=tr.name;
+    if(done){const b=document.createElement('span');b.className='done';b.textContent=T('done');li.querySelector('.name').append(b)}
     li.querySelector('.meta').textContent=new Date(tr.start).toLocaleString(lang==='he'?'he-IL':lang,{dateStyle:'short',timeStyle:'short'})+' · '+T('listMeta',m,steps(m),tr.arts.length)+(tr.runs&&tr.runs.length?' · '+T('runs',tr.runs.length):'');
     const age=li.querySelector('.age');
     age.dataset.start=tr.start;age.dataset.run=run?run.age:'';
-    li.querySelector('.go').textContent=T('follow');li.querySelector('.rm').textContent=T('del');
-    li.querySelector('.go').onclick=()=>startFollow(tr.id);
+    li.querySelector('.go').textContent=done?T('viewResult'):T('follow');li.querySelector('.rm').textContent=T('del');
+    li.querySelector('.sh').textContent=T('share');li.querySelector('.sh').onclick=()=>shareTrack(tr);
+    li.querySelector('.go').onclick=()=>{startCompass();startFollow(tr.id)};
     li.querySelector('.rm').onclick=async()=>{if(await ask(T('delAsk',tr.name),T('del'))){saveTracks(tracks().filter(x=>x.id!==tr.id));renderHome()}};
     ul.appendChild(li);
   });
@@ -399,20 +480,21 @@ function tickHome(){
 }
 const draftLay=()=>{try{return JSON.parse(load('gps-lay')||'null')}catch(e){return null}};
 const draftRun=()=>{try{return JSON.parse(load('gps-run')||'null')}catch(e){return null}};
-$('draftResume').onclick=()=>{const l=draftLay(),r=draftRun();if(l)startLay(l);else if(r)startFollow(r.id,r)};
+$('draftResume').onclick=()=>{startCompass();const l=draftLay(),r=draftRun();if(l)startLay(l);else if(r)startFollow(r.id,r)};
 $('draftDiscard').onclick=()=>{drop('gps-lay');drop('gps-run');renderHome()};
-$('newTrack').onclick=()=>startLay(null);
+$('newTrack').onclick=()=>{startCompass();startLay(null)};
 $('lang').onchange=()=>{lang=DIRS[$('lang').value]?$('lang').value:'he';store('trk-lang',lang);applyLang();if(mode)refreshScreen();else renderHome()};
 
 /* ---------- map ---------- */
 let map=null,layers={},sat=true,follow=true,meMk=null,accC=null;
 function ensureMap(){
   if(map){setTimeout(()=>map.invalidateSize(),0);return}
-  map=L.map('map',{zoomControl:false,attributionControl:true});L.control.zoom({position:'bottomright'}).addTo(map);map.setView([31.5,34.9],7);
+  map=L.map('map',{zoomControl:false,attributionControl:true,rotate:true,bearing:0,touchRotate:false,rotateControl:false,shiftKeyRotate:false});L.control.zoom({position:'bottomright'}).addTo(map);map.setView([31.5,34.9],7);
   layers.sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:21,maxNativeZoom:19,attribution:'Imagery © Esri'});
   layers.map=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21,maxNativeZoom:19,attribution:'© OpenStreetMap'});
   layers.sat.addTo(map);
   map.on('dragstart',()=>setFollow(false));
+  syncRotBtn();
 }
 function setFollow(v){follow=v;$('followBtn').setAttribute('aria-pressed',String(v));if(v&&lastPos)map.panTo(lastPos)}
 $('followBtn').onclick=()=>setFollow(!follow);
@@ -438,6 +520,7 @@ function startGps(cb){
     if(!meMk){meMk=L.marker(lastPos,{icon:meIcon(),zIndexOffset:1000,interactive:false}).addTo(map);accC=L.circle(lastPos,{radius:lastAcc,color:'#1F6FEB',weight:1,fillOpacity:.08,interactive:false}).addTo(map);map.setView(lastPos,18)}
     else{meMk.setLatLng(lastPos);accC.setLatLng(lastPos).setRadius(lastAcc)}
     if(follow)map.panTo(lastPos,{animate:false});
+    const c=pos.coords;if(!compassSeen&&c.heading!=null&&!isNaN(c.heading)&&(c.speed||0)>0.6)setHeading(c.heading);
     onFix&&onFix(lastPos,lastAcc,pos.timestamp||Date.now());
   },err=>{banner(err.code===1?T('gpsDenied'):T('waitGps'),err.code===1?'bad':'')},{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 }
@@ -455,14 +538,14 @@ function openScreen(title){
   keepAwake(true);
 }
 function clearMap(){if(!map)return;map.eachLayer(l=>{if(l!==layers.sat&&l!==layers.map)map.removeLayer(l)});meMk=null;accC=null}
-$('exitBtn').onclick=()=>{stopGps();keepAwake(false);clearInterval(tick);clearMap();lastPos=null;renderHome()};
-function refreshScreen(){if(mode==='lay')renderLay();else renderFollow()}
+$('exitBtn').onclick=()=>{speechStop();stopGps();keepAwake(false);clearInterval(tick);clearMap();lastPos=null;renderHome()};
+function refreshScreen(){syncRotBtn();if(mode==='lay')renderLay();else if(mode==='view')renderView();else renderFollow()}
 
 /* ---------- laying ---------- */
 // state while laying: {start,pts,arts}; saved after every change so a reload can continue
 let lay=null,layLine=null,layArtMk=[],layFlag=null;
 function startLay(draft){
-  mode='lay';lay=draft;openScreen(T('layTitle'));clearMap();layLine=null;layArtMk=[];layFlag=null;
+  mode='lay';setTimeout(syncRotBtn,0);lay=draft;openScreen(T('layTitle'));clearMap();layLine=null;layArtMk=[];layFlag=null;
   if(lay)drawLay();
   startGps((p,acc,t)=>{
     if(lay&&acc<=GOOD_ACC){const last=lay.pts[lay.pts.length-1];if(!last||hav(last,p)>=2){lay.pts.push([p[0],p[1],t]);store('gps-lay',JSON.stringify(lay));drawLay()}}
@@ -526,11 +609,20 @@ let tr=null,geo=null,run=null,runLine=null,artMk=[],wasOff=false,lastProg=null;
 const OFF=10; // meters from the laid track that count as "off"
 function startFollow(id,resume){
   tr=tracks().find(x=>x.id===id);if(!tr)return renderHome();
-  mode='follow';run=resume||null;openScreen(tr.name);clearMap();runLine=null;lastProg=run?run.prog:null;wasOff=false;
+  const finished=!resume&&tr.runs&&tr.runs.length;
+  mode=finished?'view':'follow';setTimeout(syncRotBtn,0);run=resume||null;openScreen(tr.name);clearMap();runLine=null;lastProg=run?run.prog:null;wasOff=false;
   geo=prepare(tr);
   casedLine(tr.pts.map(p=>[p[0],p[1]]),'#2F9E55').addTo(map);
   geo.turns.forEach(t=>L.marker(t.ll,{icon:L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div class="mk-turn"></div>'}),interactive:false}).addTo(map));
   L.marker(tr.pts[0],{icon:flagIcon(),interactive:false}).addTo(map);
+  if(finished){
+    const r=tr.runs[tr.runs.length-1];run=null;viewRun=r;
+    artMk=tr.arts.map((a,k)=>L.marker(a.ll,{icon:artIcon(k+1,r.found.includes(k)),interactive:false}).addTo(map));
+    if(r.path.length)casedLine(r.path.map(p=>[p[0],p[1]]),'#7B4FD6','8 8').addTo(map);
+    map.setBearing&&map.setBearing(0);
+    map.fitBounds(L.latLngBounds(tr.pts.map(p=>[p[0],p[1]])).pad(0.2));setFollow(false);
+    clearInterval(tick);renderView();return;
+  }
   drawArts();if(run)drawRun();
   map.fitBounds(L.latLngBounds(tr.pts.map(p=>[p[0],p[1]])).pad(0.2));setFollow(false);
   startGps((p,acc,t)=>{
@@ -541,11 +633,11 @@ function startFollow(id,resume){
       if(!last||hav(last,p)>=2){run.path.push([p[0],p[1],t,Math.round(loc.d)]);run.prog=lastProg;store('gps-run',JSON.stringify(run));drawRun()}
       const off=loc.d>OFF;if(off&&!wasOff)buzz([200,100,200]);wasOff=off;
     }
-    curLoc=loc;renderFollow();
+    curLoc=loc;if(run)checkAlerts();renderFollow();
   });
   clearInterval(tick);tick=setInterval(renderFollow,1000);renderFollow();
 }
-let curLoc=null;
+let curLoc=null,viewRun=null;
 function drawArts(){
   artMk.forEach(m=>map.removeLayer(m));
   artMk=tr.arts.map((a,k)=>{const f=run&&run.found.includes(k);const mk=L.marker(a.ll,{icon:artIcon(k+1,f)}).addTo(map);mk.on('click',()=>toggleFound(k));return mk});
@@ -571,7 +663,7 @@ function renderFollow(){
   if(lastAcc>GOOD_ACC){banner(T('gpsWeak',lastAcc),'bad');return}
   if(!run||!curLoc){banner('');return}
   if(curLoc.d>OFF){banner(T('offBy',Math.round(curLoc.d)),'bad');return}
-  const prog=lastProg||0;
+  const prog=(lastProg||0)+cfg.lead; // where the dog is, about this far ahead of the handler
   const near=tr.arts.map((a,k)=>({k,ahead:a.cum-prog})).filter(x=>!run.found.includes(x.k)&&x.ahead>-8&&x.ahead<15).sort((a,b)=>a.ahead-b.ahead)[0];
   if(near){banner(T('nearArt',near.k+1).replace('{m}',Math.max(0,Math.round(near.ahead))),'ok');return}
   const nt=geo.turns.find(t=>t.cum>prog+3);
@@ -581,7 +673,7 @@ async function followMain(){
   if(!run){
     run={id:tr.id,start:Date.now(),age:Date.now()-tr.start,found:[],path:[],prog:0};lastProg=0;
     if(lastPos)run.path.push([lastPos[0],lastPos[1],Date.now(),curLoc?Math.round(curLoc.d):0]);
-    store('gps-run',JSON.stringify(run));setFollow(true);buzz(80);drawArts();renderFollow();return;
+    store('gps-run',JSON.stringify(run));setFollow(true);buzz(80);if(cfg.alert==='voice')primeVoice();drawArts();renderFollow();return;
   }
   if(!(await ask(T('stopAsk'),T('stopYes'))))return;
   run.end=Date.now();
@@ -589,24 +681,157 @@ async function followMain(){
   const prog=Math.min(100,Math.round(100*(run.prog||0)/geo.len));
   const rec={start:run.start,end:run.end,age:run.age,found:run.found.slice(),path:run.path,maxDev,onPct,prog};
   const all=tracks(),t=all.find(x=>x.id===tr.id);if(t){t.runs=t.runs||[];t.runs.push(rec);saveTracks(all)}
-  drop('gps-run');run=null;renderFollow();
-  const rows=[[T('sumAge'),fmtT(rec.age)],[T('sumTime'),fmtT(rec.end-rec.start)],[T('sumFound'),T('sumOf',rec.found.length,tr.arts.length)],[T('sumMax'),T('m',maxDev)],[T('sumOn'),onPct+'%'],[T('sumProg'),prog+'%']];
+  drop('gps-run');run=null;speechStop();
+  // the track is done: reopen it read-only, then show the summary
+  stopGps();startFollow(tr.id);showSummary(rec);
+}
+function showSummary(rec){
+  const rows=[[T('sumAge'),fmtT(rec.age)],[T('sumTime'),fmtT(rec.end-rec.start)],[T('sumFound'),T('sumOf',rec.found.length,tr.arts.length)],[T('sumMax'),T('m',rec.maxDev)],[T('sumOn'),rec.onPct+'%'],[T('sumProg'),rec.prog+'%']];
   $('sumList').innerHTML='';rows.forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;$('sumList').append(dt,dd)});
   $('sumDlg').showModal();
+}
+function renderView(){
+  const r=viewRun;
+  setStats([[T('sAge'),fmtT(r.age)],[T('sRun'),fmtT(r.end-r.start)],[T('sumOn'),r.onPct+'%'],[T('sFound'),`${r.found.length}/${tr.arts.length}`]]);
+  $('mainBtn').textContent=T('showSum');$('mainBtn').className='btn';$('mainBtn').disabled=false;
+  $('sideBtn').textContent=T('share');$('sideBtn').disabled=false;
+  $('hintLine').textContent=T('doneHint');banner('');syncRotBtn();
 }
 // "article found" marks the closest unfound article along the track (or the next one in order)
 function followSide(){
   if(!run)return;
-  const prog=lastProg||0,left=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-prog)})).filter(x=>!run.found.includes(x.k)).sort((a,b)=>a.d-b.d);
+  const prog=(lastProg||0)+cfg.lead,left=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-prog)})).filter(x=>!run.found.includes(x.k)).sort((a,b)=>a.d-b.d);
   if(left.length)toggleFound(left[0].k);
 }
 $('sumClose').onclick=()=>$('sumDlg').close();
-$('mainBtn').onclick=()=>{if(mode==='lay')layMain();else followMain()};
-$('sideBtn').onclick=()=>{if(mode==='lay')layMark();else followSide()};
+$('mainBtn').onclick=()=>{if(mode==='lay')layMain();else if(mode==='view')showSummary(viewRun);else followMain()};
+$('sideBtn').onclick=()=>{if(mode==='lay')layMark();else if(mode==='view')shareTrack(tr);else followSide()};
+
+/* ---------- settings ---------- */
+const DEF={alert:'vibrate',alertDist:10,lead:0,rotate:true};
+let cfg=(()=>{try{return Object.assign({},DEF,JSON.parse(load('gps-settings')||'{}'))}catch(e){return Object.assign({},DEF)}})();
+function fillSettings(){
+  const dist=$('sAlertDist'),lead=$('sLead');
+  dist.innerHTML=[5,10,15,20,30].map(v=>`<option value="${v}">${T('m',v)}</option>`).join('');
+  lead.innerHTML=[0,5,10].map(v=>`<option value="${v}">${v?T('m',v):T('lead0')}</option>`).join('');
+  $('sAlert').value=cfg.alert;dist.value=cfg.alertDist;lead.value=cfg.lead;$('sRotate').checked=cfg.rotate;
+}
+function openSettings(){fillSettings();$('setDlg').showModal()}
+$('setBtnHome').onclick=openSettings;$('setBtn').onclick=openSettings;
+$('setForm').onsubmit=e=>{
+  e.preventDefault();
+  cfg={alert:$('sAlert').value,alertDist:+$('sAlertDist').value,lead:+$('sLead').value,rotate:$('sRotate').checked};
+  store('gps-settings',JSON.stringify(cfg));$('setDlg').close();
+  if(cfg.alert==='voice')primeVoice();if(cfg.rotate)startCompass();
+  if(mode)refreshScreen();applyBearing(true);
+};
+$('setTest').onclick=()=>{const how=$('sAlert').value;if(how==='voice')primeVoice();alertNow(how,T('sayTurn',T('right'),+$('sAlertDist').value),'turn')};
+
+/* ---------- alerts before turns and articles ---------- */
+const VOICE_LANG={he:'he-IL',en:'en-US',de:'de-DE'};
+function say(text){
+  try{const s=window.speechSynthesis;if(!s)return;s.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=VOICE_LANG[lang];
+    const pre=lang==='he'?['he','iw']:[lang];const v=s.getVoices().find(v=>pre.some(x=>(v.lang||'').toLowerCase().startsWith(x)));if(v)u.voice=v;s.speak(u)}catch(e){}
+}
+// iPhones only speak after a tap; a silent line spoken from a tap unlocks speech for the run
+function primeVoice(){try{const s=window.speechSynthesis;if(s){const u=new SpeechSynthesisUtterance(' ');u.volume=0;s.speak(u)}}catch(e){}}
+function speechStop(){try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}}
+function alertNow(how,text,kind){if(how==='vibrate')buzz(kind==='turn'?[450]:[120,80,120,80,120]);else if(how==='voice')say(text)}
+// each turn and each article is announced once, when the dog's point gets within the chosen distance
+function checkAlerts(){
+  if(!run||cfg.alert==='none'||!curLoc||curLoc.d>OFF)return;
+  run.alerted=run.alerted||{t:[],a:[]};
+  const eff=(lastProg||0)+cfg.lead;
+  geo.turns.forEach((t,i)=>{const ahead=t.cum-eff;
+    if(!run.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.t.push(i);alertNow(cfg.alert,T('sayTurn',T(t.dir),Math.max(0,Math.round(ahead))),'turn')}});
+  tr.arts.forEach((a,k)=>{const ahead=a.cum-eff;
+    if(!run.found.includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead))),'art')}});
+}
+
+/* ---------- map follows the phone's heading ---------- */
+let heading=null,lastBearing=0,orientOn=false,compassSeen=false;
+function screenAngle(){return(screen.orientation&&screen.orientation.angle)||window.orientation||0}
+function onOrient(e){
+  let h=null;
+  if(typeof e.webkitCompassHeading==='number')h=e.webkitCompassHeading;          // iPhone
+  else if((e.absolute||e.type==='deviceorientationabsolute')&&typeof e.alpha==='number')h=360-e.alpha; // Android
+  if(h==null)return;
+  compassSeen=true;setHeading((h+screenAngle())%360);
+}
+function setHeading(h){
+  if(heading==null)heading=h;else{const d=((h-heading+540)%360)-180;heading=(heading+d*0.3+360)%360} // smooth out jitter
+  applyBearing();
+}
+function applyBearing(force){
+  if(!map||!map.setBearing||mode==='view')return;
+  const now=Date.now();if(!force&&now-lastBearing<120)return;lastBearing=now;
+  map.setBearing(cfg.rotate&&heading!=null?-heading:0);
+}
+// must start from a tap: iPhones ask for permission to read the compass
+function startCompass(){
+  if(orientOn||!cfg.rotate)return;
+  const listen=()=>{orientOn=true;
+    if('ondeviceorientationabsolute' in window)window.addEventListener('deviceorientationabsolute',onOrient);
+    else window.addEventListener('deviceorientation',onOrient);
+    setTimeout(()=>{if(!compassSeen&&mode&&cfg.rotate)toast(T('noCompass'))},4000);};
+  try{
+    if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function')
+      DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')listen()}).catch(()=>{});
+    else if(window.DeviceOrientationEvent)listen();
+  }catch(e){}
+}
+function syncRotBtn(){const b=$('rotBtn');b.textContent=cfg.rotate?T('rotOn'):T('rotOff');b.setAttribute('aria-pressed',String(cfg.rotate));b.hidden=mode==='view'}
+$('rotBtn').onclick=()=>{cfg.rotate=!cfg.rotate;store('gps-settings',JSON.stringify(cfg));if(cfg.rotate)startCompass();syncRotBtn();applyBearing(true)};
+
+/* ---------- sharing a track with another phone ---------- */
+// The track travels inside the link: points thinned to about 1 m, stored as small integer steps, then compressed.
+const b64u=bytes=>{let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const unb64u=str=>{const s=atob(str.replace(/-/g,'+').replace(/_/g,'/'));const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b};
+async function packTrack(t){
+  const P=projector(t.pts[0]),keep=rdp(t.pts.map(P),1),q=v=>Math.round(v*1e5),pts=[];let a0=0,b0=0;
+  keep.forEach(i=>{const a=q(t.pts[i][0]),b=q(t.pts[i][1]);pts.push(a-a0,b-b0);a0=a;b0=b});
+  const json=JSON.stringify({v:1,n:t.name,s:t.start,e:t.end,p:pts,a:t.arts.map(x=>[q(x.ll[0]),q(x.ll[1])])});
+  if(window.CompressionStream){
+    const st=new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return 'z'+b64u(new Uint8Array(await new Response(st).arrayBuffer()));
+  }
+  return 'j'+b64u(new TextEncoder().encode(json));
+}
+async function unpackTrack(code){
+  let bytes=unb64u(code.slice(1));
+  if(code[0]==='z'){const st=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));bytes=new Uint8Array(await new Response(st).arrayBuffer())}
+  const o=JSON.parse(new TextDecoder().decode(bytes));
+  const pts=[];let a=0,b=0;for(let i=0;i+1<o.p.length;i+=2){a+=o.p[i];b+=o.p[i+1];pts.push([a/1e5,b/1e5,0])}
+  if(pts.length<2)throw new Error('short');
+  const t={id:'t'+Date.now().toString(36),name:String(o.n||'').slice(0,60),start:+o.s||Date.now(),end:+o.e||Date.now(),pts,arts:[],runs:[]};
+  const g=prepare(t);
+  t.arts=(o.a||[]).map(x=>{const ll=[x[0]/1e5,x[1]/1e5];return{ll,cum:locate(g,ll,null).cum,t:0}});
+  return t;
+}
+async function shareTrack(t){
+  let url;try{url=location.href.split('#')[0]+'#share='+await packTrack(t)}catch(e){return}
+  if(navigator.share){try{await navigator.share({title:t.name,text:T('shareText',t.name),url});return}catch(e){if(e&&e.name==='AbortError')return}}
+  $('linkIn').value=url;$('linkDlg').showModal();setTimeout(()=>$('linkIn').select(),50);
+}
+$('linkClose').onclick=()=>$('linkDlg').close();
+$('linkCopy').onclick=()=>{const v=$('linkIn').value;
+  const ok=()=>{toast(T('linkCopied'));$('linkDlg').close()};
+  try{navigator.clipboard.writeText(v).then(ok,()=>{$('linkIn').select();document.execCommand&&document.execCommand('copy')&&ok()})}catch(e){$('linkIn').select()}};
+// opening a shared link offers to save the track (its age still counts from when it was laid)
+async function checkShared(){
+  const m=/^#share=([jz][A-Za-z0-9_-]+)$/.exec(location.hash);if(!m)return;
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  let t;try{t=await unpackTrack(m[1])}catch(e){toast(T('badLink'));return}
+  if(tracks().some(x=>x.start===t.start&&x.name===t.name)){toast(T('alreadySaved'));return}
+  const len=Math.round(pathLen(t.pts));
+  if(await ask(T('importAsk',t.name,len,t.arts.length),T('importYes'))){const all=tracks();all.push(t);saveTracks(all);toast(T('imported'));renderHome()}
+}
 
 /* ---------- start ---------- */
 applyLang();
 renderHome();
+checkShared();
+window.addEventListener('hashchange',checkShared);
 })();
 </script>
 </body>
