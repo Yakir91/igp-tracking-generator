@@ -271,7 +271,7 @@ he:{
   leadNote:'הכלב בדרך כלל מקדים את המוביל. ההתראות והמרחקים לפנייה ולחפץ יחושבו לפי הנקודה שנמצאת המרחק הזה לפניך לאורך המסלול.',
   setRotate:'סובב את המפה לפי כיוון הטלפון',setTest:'נסה התראה',
   sayTurn:(d,m)=>`פנייה ${d} בעוד ${m} מטר`,sayArt:(k,m)=>`חפץ ${k} בעוד ${m} מטר`,
-  rotOn:'לפי הטלפון',rotOff:'צפון למעלה',noCompass:'הטלפון לא מדווח על כיוון. המפה תסתובב לפי כיוון ההליכה כשאתה זז.',
+  rotOn:'לפי הטלפון',rotFree:'סיבוב ידני',rotFreeHint:'סובבת את המפה ביד. כדי לחזור לכיוון הטלפון, לחץ על "סיבוב ידני".',rotOff:'צפון למעלה',noCompass:'הטלפון לא מדווח על כיוון. המפה תסתובב לפי כיוון ההליכה כשאתה זז.',
   share:'שתף',shareText:n=>`מסלול גישוש: ${n}`,linkCopied:'הקישור הועתק',copyLink:'העתק קישור',linkTitle:'קישור למסלול',
   linkNote:'שלח את הקישור לטלפון השני. כשפותחים אותו, העמוד מציע לשמור את המסלול.',
   badLink:'הקישור למסלול פגום או חתוך. בקש מהשולח לשלוח אותו שוב.',alreadySaved:'המסלול הזה כבר שמור בטלפון.',
@@ -322,7 +322,7 @@ en:{
   leadNote:'The dog is usually ahead of the handler. Alerts and distances to turns and articles use the point this far ahead of you along the track.',
   setRotate:'Rotate the map with the phone',setTest:'Test alert',
   sayTurn:(d,m)=>`Turn ${d} in ${m} meters`,sayArt:(k,m)=>`Article ${k} in ${m} meters`,
-  rotOn:'Phone heading',rotOff:'North up',noCompass:'This phone does not report a heading. The map turns with your walking direction once you move.',
+  rotOn:'Phone heading',rotFree:'Turned by hand',rotFreeHint:'You turned the map by hand. To follow the phone again, tap "Turned by hand".',rotOff:'North up',noCompass:'This phone does not report a heading. The map turns with your walking direction once you move.',
   share:'Share',shareText:n=>`Tracking track: ${n}`,linkCopied:'Link copied',copyLink:'Copy link',linkTitle:'Track link',
   linkNote:'Send this link to the other phone. Opening it offers to save the track.',
   badLink:'The track link is broken or cut off. Ask the sender to send it again.',alreadySaved:'This track is already saved on this phone.',
@@ -373,7 +373,7 @@ de:{
   leadNote:'Der Hund ist meist vor dem Hundeführer. Hinweise und Abstände zu Winkeln und Gegenständen gelten für den Punkt, der so weit vor dir auf der Fährte liegt.',
   setRotate:'Karte mit dem Handy drehen',setTest:'Hinweis testen',
   sayTurn:(d,m)=>`Winkel nach ${d} in ${m} Metern`,sayArt:(k,m)=>`Gegenstand ${k} in ${m} Metern`,
-  rotOn:'Handy-Richtung',rotOff:'Norden oben',noCompass:'Das Handy meldet keine Richtung. Die Karte dreht sich mit deiner Gehrichtung, sobald du dich bewegst.',
+  rotOn:'Handy-Richtung',rotFree:'Von Hand gedreht',rotFreeHint:'Du hast die Karte von Hand gedreht. Um wieder der Handy-Richtung zu folgen, tippe auf „Von Hand gedreht“.',rotOff:'Norden oben',noCompass:'Das Handy meldet keine Richtung. Die Karte dreht sich mit deiner Gehrichtung, sobald du dich bewegst.',
   share:'Teilen',shareText:n=>`Fährte: ${n}`,linkCopied:'Link kopiert',copyLink:'Link kopieren',linkTitle:'Link zur Fährte',
   linkNote:'Schick den Link an das andere Handy. Beim Öffnen wird angeboten, die Fährte zu speichern.',
   badLink:'Der Link zur Fährte ist beschädigt oder abgeschnitten. Bitte den Absender, ihn erneut zu schicken.',alreadySaved:'Diese Fährte ist auf diesem Handy schon gespeichert.',
@@ -499,7 +499,7 @@ let map=null,mapReady=false,readyQ=[],sat=true,follow=true,meMk=null,drawn=[],ui
 function whenReady(fn){if(mapReady)fn();else readyQ.push(fn)}
 function ensureMap(){
   if(map){setTimeout(()=>map.resize(),0);return}
-  map=new maplibregl.Map({container:'map',center:[34.9,31.5],zoom:7,maxZoom:21,attributionControl:{compact:true},dragRotate:false,pitchWithRotate:false,
+  map=new maplibregl.Map({container:'map',center:[34.9,31.5],zoom:7,maxZoom:21,attributionControl:{compact:true},dragRotate:true,pitchWithRotate:false,touchPitch:false,
     style:{version:8,sources:{
       sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Imagery © Esri'},
       osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'},
@@ -507,8 +507,12 @@ function ensureMap(){
       layers:[{id:'sat',type:'raster',source:'sat'},{id:'osm',type:'raster',source:'osm',layout:{visibility:'none'}},
         {id:'acc-fill',type:'fill',source:'acc',paint:{'fill-color':'#1F6FEB','fill-opacity':0.08}},
         {id:'acc-line',type:'line',source:'acc',paint:{'line-color':'#1F6FEB','line-width':1}}]}});
-  map.touchZoomRotate.disableRotation();
-  map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+  map.addControl(new maplibregl.NavigationControl({showCompass:true,visualizePitch:false}),'bottom-right');
+  // twisting the map with two fingers takes over from the compass until the rotation button is tapped
+  map.on('rotatestart',e=>{if(!e.originalEvent||freeRot||!/move|start|down/.test(e.originalEvent.type))return; // fingers or mouse, not the north button
+   freeRot=true;syncRotBtn();toast(T('rotFreeHint'))});
+  // the compass button turns the map back to north and keeps it there
+  map.getContainer().addEventListener('click',e=>{if(!e.target.closest('.maplibregl-ctrl-compass'))return;freeRot=false;cfg.rotate=false;store('gps-settings',JSON.stringify(cfg));shownBear=0;syncRotBtn()},true);
   map.on('load',()=>{mapReady=true;readyQ.splice(0).forEach(f=>f())});
   // a one-finger drag means "let me look around": stop following. Two fingers (pinch) keep following.
   map.on('dragstart',e=>{const t=e.originalEvent&&e.originalEvent.touches;if(t&&t.length>1)return;setFollow(false)});
@@ -556,7 +560,7 @@ function accCircle(ll,r){
   whenReady(()=>map.getSource('acc').setData({type:'Feature',geometry:{type:'Polygon',coordinates:[c]}}));
 }
 // One animation loop: the position dot glides to each new GPS reading and the map eases to the phone's heading.
-let shownPos=null,shownBear=0,touching=false;
+let shownPos=null,shownBear=0,touching=false,freeRot=false;
 function frame(){
   requestAnimationFrame(frame);
   if(!map||!mode)return;
@@ -566,7 +570,8 @@ function frame(){
     const dl=lastPos[0]-shownPos[0],dn=lastPos[1]-shownPos[1];
     if(Math.abs(dl)>1e-8||Math.abs(dn)>1e-8){shownPos[0]+=dl*0.12;shownPos[1]+=dn*0.12;meMk.setLngLat(lnglat(shownPos));moved=true}
   }
-  const want=mode==='view'||mode==='preview'||!cfg.rotate?0:(heading==null?shownBear:heading); // bearing = the compass direction shown at the top
+  if(freeRot)shownBear=map.getBearing(); // turned by hand: keep whatever the fingers left
+  const want=freeRot?shownBear:mode==='view'||mode==='preview'||!cfg.rotate?0:(heading==null?shownBear:heading); // bearing = the compass direction shown at the top
   const d=((want-shownBear+540)%360)-180,turn=Math.abs(d)>0.1;
   if(turn)shownBear=(shownBear+d*0.12+360)%360;
   if(touching||map.isZooming())return; // a finger is on the map, or +/- is zooming: leave the camera alone
@@ -608,6 +613,7 @@ let mode=null; // 'lay' | 'follow'
 function banner(text,kind){const b=$('banner');b.hidden=!text;b.textContent=text||'';b.className='banner'+(kind?' '+kind:'')}
 function setStats(items){$('stats').innerHTML=items.map(([k,v,c])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}</div></div>`).join('')}
 function openScreen(title){
+  freeRot=false;
   $('home').hidden=true;$('screen').hidden=false;$('sTitle').textContent=title;
   ensureMap();clearInterval(tick);
   $('layerBtn').textContent=sat?T('layerMap'):T('layerSat');
@@ -863,8 +869,8 @@ function startCompass(){
     else if(window.DeviceOrientationEvent)listen();
   }catch(e){}
 }
-function syncRotBtn(){const b=$('rotBtn');b.textContent=cfg.rotate?T('rotOn'):T('rotOff');b.setAttribute('aria-pressed',String(cfg.rotate));b.hidden=mode==='view'||mode==='preview'}
-$('rotBtn').onclick=()=>{cfg.rotate=!cfg.rotate;store('gps-settings',JSON.stringify(cfg));if(cfg.rotate)startCompass();syncRotBtn();applyBearing(true)};
+function syncRotBtn(){const b=$('rotBtn');b.textContent=freeRot?T('rotFree'):cfg.rotate?T('rotOn'):T('rotOff');b.setAttribute('aria-pressed',String(cfg.rotate&&!freeRot));b.hidden=mode==='view'||mode==='preview'}
+$('rotBtn').onclick=()=>{if(freeRot){freeRot=false;cfg.rotate=true}else cfg.rotate=!cfg.rotate;store('gps-settings',JSON.stringify(cfg));if(cfg.rotate)startCompass();syncRotBtn();applyBearing(true)};
 
 /* ---------- sharing a track with another phone ---------- */
 // The track travels inside the link: points thinned to about 1 m, stored as small integer steps, then compressed.
