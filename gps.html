@@ -510,7 +510,11 @@ function ensureMap(){
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
   map.on('load',()=>{mapReady=true;readyQ.splice(0).forEach(f=>f())});
-  map.on('dragstart',()=>setFollow(false));
+  // a one-finger drag means "let me look around": stop following. Two fingers (pinch) keep following.
+  map.on('dragstart',e=>{const t=e.originalEvent&&e.originalEvent.touches;if(t&&t.length>1)return;setFollow(false)});
+  // Any camera move cancels a gesture in progress, so while a finger is on the map the map holds still.
+  const box=map.getCanvasContainer(),fingers=e=>{touching=e.touches.length>0};
+  box.addEventListener('touchstart',fingers,{passive:true});box.addEventListener('touchend',fingers,{passive:true});box.addEventListener('touchcancel',fingers,{passive:true});
   syncRotBtn();requestAnimationFrame(frame);
 }
 function setFollow(v){follow=v;$('followBtn').setAttribute('aria-pressed',String(v))}
@@ -552,7 +556,7 @@ function accCircle(ll,r){
   whenReady(()=>map.getSource('acc').setData({type:'Feature',geometry:{type:'Polygon',coordinates:[c]}}));
 }
 // One animation loop: the position dot glides to each new GPS reading and the map eases to the phone's heading.
-let shownPos=null,shownBear=0;
+let shownPos=null,shownBear=0,touching=false;
 function frame(){
   requestAnimationFrame(frame);
   if(!map||!mode)return;
@@ -565,7 +569,7 @@ function frame(){
   const want=mode==='view'||mode==='preview'||!cfg.rotate?0:(heading==null?shownBear:heading); // bearing = the compass direction shown at the top
   const d=((want-shownBear+540)%360)-180,turn=Math.abs(d)>0.1;
   if(turn)shownBear=(shownBear+d*0.12+360)%360;
-  if(map.isZooming())return; // a pinch or the +/- buttons are zooming: leave the camera to them
+  if(touching||map.isZooming())return; // a finger is on the map, or +/- is zooming: leave the camera alone
   if(follow&&shownPos&&(moved||turn||map.getBearing()!==shownBear))map.jumpTo({center:lnglat(shownPos),bearing:shownBear});
   else if(turn)map.setBearing(shownBear);
 }
