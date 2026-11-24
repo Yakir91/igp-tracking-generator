@@ -262,6 +262,7 @@ summary{cursor:pointer;font-weight:600}
         <div class="mcode">
           <span class="code" id="mCode" dir="ltr"></span>
           <button class="btn ghost" id="mCopy" data-i18n="copy">העתק קוד</button>
+          <button class="btn" id="mField" data-i18n="toField">הנח בשטח</button>
         </div>
         <p class="note" data-i18n="codeNote">את הקוד אפשר לשלוח ולטעון בלשונית "מסלול אקראי", בתיבת טעינת מסלול לפי קוד.</p>
       </section>
@@ -274,6 +275,7 @@ summary{cursor:pointer;font-weight:600}
         <span class="summary" id="summary"></span>
         <span><span data-i18n="codeLbl">קוד:</span> <span class="code" id="code" dir="ltr"></span></span>
         <button class="linkbtn" id="toManual" data-i18n="toManual">ערוך ידנית</button>
+        <button class="linkbtn" id="toField" data-i18n="toField">הנח בשטח</button>
       </div>
       <div id="svgbox"></div>
     </section>
@@ -344,7 +346,7 @@ he:{
   undo:'בטל פעולה',clear:'נקה',areaLbl:'שטח',
   hCheck:'בדיקת המסלול',hSheet:'דף הנחת מסלול',thStep:'צעד',thWhat:'מה עושים',thPrev:'מהקודם',
   hCode:'קוד המסלול',copy:'העתק קוד',codeNote:'את הקוד אפשר לשלוח ולטעון בלשונית "מסלול אקראי", בתיבת טעינת מסלול לפי קוד.',
-  codeLbl:'קוד:',toManual:'ערוך ידנית',hLoad:'טעינת מסלול לפי קוד',loadBtn:'טען',
+  codeLbl:'קוד:',toManual:'ערוך ידנית',toField:'הנח בשטח',hLoad:'טעינת מסלול לפי קוד',loadBtn:'טען',
   settings:'הגדרות מרחקים',
   sBefore:'מינימום צעדים בין חפץ לפנייה שאחריו',sAfter:'מינימום צעדים אחרי פנייה עד חפץ',sStart:'מינימום צעדים מהדגל עד חפץ ראשון',
   sGap:'מינימום צעדים בין חפצים',sLeg:'אורך צלע מינימלי',sSep:'מרחק מינימלי בין צלעות לא סמוכות',sCross:'מינימום צעדים בין עקבות חוצות לפנייה (FH2, FH3)',
@@ -436,7 +438,7 @@ en:{
   undo:'Undo',clear:'Clear',areaLbl:'Area',
   hCheck:'Track check',hSheet:'Track-laying sheet',thStep:'Step',thWhat:'What to do',thPrev:'From previous',
   hCode:'Track code',copy:'Copy code',codeNote:'You can send this code and load it in the "Random" tab, in the load-by-code box.',
-  codeLbl:'Code:',toManual:'Edit by hand',hLoad:'Load a track by code',loadBtn:'Load',
+  codeLbl:'Code:',toManual:'Edit by hand',toField:'Lay in the field',hLoad:'Load a track by code',loadBtn:'Load',
   settings:'Distance settings',
   sBefore:'Min. steps from an article to the next turn',sAfter:'Min. steps after a turn to an article',sStart:'Min. steps from the flag to the first article',
   sGap:'Min. steps between articles',sLeg:'Minimum leg length',sSep:'Min. distance between non-adjacent legs',sCross:'Min. steps between a cross track and a turn (FH2, FH3)',
@@ -528,7 +530,7 @@ de:{
   undo:'Rückgängig',clear:'Löschen',areaLbl:'Fläche',
   hCheck:'Fährtenprüfung',hSheet:'Legeplan',thStep:'Schritt',thWhat:'Was tun',thPrev:'Seit vorher',
   hCode:'Fährtencode',copy:'Code kopieren',codeNote:'Diesen Code kannst du weitergeben und im Tab „Zufällig“ im Feld „Fährte per Code laden“ öffnen.',
-  codeLbl:'Code:',toManual:'Bearbeiten',hLoad:'Fährte per Code laden',loadBtn:'Laden',
+  codeLbl:'Code:',toManual:'Bearbeiten',toField:'Im Gelände legen',hLoad:'Fährte per Code laden',loadBtn:'Laden',
   settings:'Abstände einstellen',
   sBefore:'Mindestschritte vom Gegenstand bis zum nächsten Winkel',sAfter:'Mindestschritte nach einem Winkel bis zum Gegenstand',sStart:'Mindestschritte vom Abgang bis zum ersten Gegenstand',
   sGap:'Mindestschritte zwischen Gegenständen',sLeg:'Mindestlänge eines Schenkels',sSep:'Mindestabstand zwischen nicht benachbarten Schenkeln',sCross:'Mindestschritte zwischen Verleitung und Winkel (FH2, FH3)',
@@ -1395,6 +1397,10 @@ $('mCopy').addEventListener('click',()=>{
   try{navigator.clipboard.writeText(c).then(()=>note(T('copied')),fallback)}catch(e){fallback()}
 });
 $('toManual').addEventListener('click',()=>{if(current)loadManual(manualCode(current))});
+// open the field page with this track as the plan to walk
+const toField=(code,name)=>{location.href='gps.html#plan='+encodeURIComponent(code)+'&n='+encodeURIComponent(name)};
+$('toField').addEventListener('click',()=>{if(current)toField(manualCode(current),codeOf(current))});
+$('mField').addEventListener('click',()=>{const t=edTrack();if(t.lens.length)toField(manualCode(t),LEVELS[level].name)});
 
 function setMode(m){
   mode=m;
