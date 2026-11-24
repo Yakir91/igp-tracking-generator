@@ -244,7 +244,9 @@ he:{
   gpsWeak:a=>`אות GPS חלש (±${a} מ'). כדאי לחכות שהדיוק ישתפר.`,
   gpsDenied:'אין גישה למיקום. אפשר גישה למיקום לאתר הזה בהגדרות הדפדפן ונסה שוב.',
   gpsNone:'הדפדפן הזה לא תומך במיקום.',
-  layHint:'השאר את המסך דלוק והעמוד פתוח בזמן ההליכה, אחרת הטלפון עלול להפסיק לעדכן את המיקום.',
+  layHint:'השאר את המסך דלוק והעמוד פתוח. מעבר לאפליקציה אחרת עוצר את המעקב עד שחוזרים, והקטע שהלכת בינתיים יסומן בקו ישר.',
+  backGap:t=>`המעקב נעצר למשך ${t} כשהעמוד לא היה פתוח. הקטע שהלכת בינתיים סומן בקו ישר.`,
+  preview:'הצג מסלול',sTurns:'פניות',previewHint:'זה המסלול שהונח: הדגל, הפניות והחפצים. כשהכלב מוכן, לחץ "צא לגישוש".',fromTrack:m=>`אתה במרחק ${m} מ' מהמסלול`,
   layReady:'עמוד בנקודת ההתחלה ולחץ "התחל הנחה". הדגל יונח איפה שאתה עומד.',
   artMarked:k=>`חפץ ${k} סומן`,tooShort:'המסלול קצר מדי. לך לפחות כמה מטרים לפני שמסיימים.',
   saveTitle:'שמירת המסלול',nameLabel:'שם המסלול',save:'שמור',discardTrack:'מחק בלי לשמור',
@@ -293,7 +295,9 @@ en:{
   gpsWeak:a=>`Weak GPS signal (±${a} m). Wait for better accuracy.`,
   gpsDenied:'No access to your location. Allow location for this site in your browser settings and try again.',
   gpsNone:'This browser does not support location.',
-  layHint:'Keep the screen on and this page open while walking, or the phone may stop updating your position.',
+  layHint:'Keep the screen on and this page open. Switching to another app pauses tracking until you come back, and the stretch you walked meanwhile is drawn as a straight line.',
+  backGap:t=>`Tracking paused for ${t} while this page was not open. The stretch you walked meanwhile is drawn as a straight line.`,
+  preview:'Show track',sTurns:'Turns',previewHint:'This is the laid track: the flag, the turns and the articles. When the dog is ready, tap "Go tracking".',fromTrack:m=>`You are ${m} m from the track`,
   layReady:'Stand at the start and tap "Start laying". The flag is placed where you stand.',
   artMarked:k=>`Article ${k} marked`,tooShort:'The track is too short. Walk at least a few meters before finishing.',
   saveTitle:'Save the track',nameLabel:'Track name',save:'Save',discardTrack:'Delete without saving',
@@ -342,7 +346,9 @@ de:{
   gpsWeak:a=>`Schwaches GPS-Signal (±${a} m). Warte auf bessere Genauigkeit.`,
   gpsDenied:'Kein Zugriff auf den Standort. Erlaube den Standort für diese Seite in den Browser-Einstellungen und versuche es erneut.',
   gpsNone:'Dieser Browser unterstützt keinen Standort.',
-  layHint:'Lass den Bildschirm an und diese Seite offen, sonst aktualisiert das Handy den Standort eventuell nicht mehr.',
+  layHint:'Lass den Bildschirm an und diese Seite offen. Ein Wechsel in eine andere App pausiert die Aufzeichnung, bis du zurückkommst; die Strecke dazwischen wird als gerade Linie gezeichnet.',
+  backGap:t=>`Die Aufzeichnung war ${t} pausiert, während die Seite nicht offen war. Die Strecke dazwischen ist als gerade Linie gezeichnet.`,
+  preview:'Fährte ansehen',sTurns:'Winkel',previewHint:'Das ist die gelegte Fährte: Abgang, Winkel und Gegenstände. Wenn der Hund bereit ist, tippe auf „Ausarbeiten“.',fromTrack:m=>`Du bist ${m} m von der Fährte entfernt`,
   layReady:'Stell dich an den Abgang und tippe auf „Legen starten“. Die Fahne wird dort gesetzt, wo du stehst.',
   artMarked:k=>`Gegenstand ${k} markiert`,tooShort:'Die Fährte ist zu kurz. Geh zuerst ein paar Meter.',
   saveTitle:'Fährte speichern',nameLabel:'Name der Fährte',save:'Speichern',discardTrack:'Ohne Speichern löschen',
@@ -457,7 +463,8 @@ function renderHome(){
     const li=document.createElement('li');li.className='card';
     const m=Math.round(pathLen(tr.pts)),run=tr.runs&&tr.runs[0];
     const done=!!(tr.runs&&tr.runs.length);
-    li.innerHTML=`<div class="name"></div><div class="meta"></div><div class="age"></div><div class="acts"><button class="btn go"></button><button class="btn ghost sh"></button><button class="btn ghost rm"></button></div>`;
+    li.innerHTML=`<div class="name"></div><div class="meta"></div><div class="age"></div><div class="acts"><button class="btn go"></button><button class="btn ghost pv"></button><button class="btn ghost sh"></button><button class="btn ghost rm"></button></div>`;
+    const pv=li.querySelector('.pv');pv.hidden=done;pv.textContent=T('preview');pv.onclick=()=>startFollow(tr.id,null,true);
     li.querySelector('.name').textContent=tr.name;
     if(done){const b=document.createElement('span');b.className='done';b.textContent=T('done');li.querySelector('.name').append(b)}
     li.querySelector('.meta').textContent=new Date(tr.start).toLocaleString(lang==='he'?'he-IL':lang,{dateStyle:'short',timeStyle:'short'})+' · '+T('listMeta',m,steps(m),tr.arts.length)+(tr.runs&&tr.runs.length?' · '+T('runs',tr.runs.length):'');
@@ -555,21 +562,22 @@ function frame(){
     const dl=lastPos[0]-shownPos[0],dn=lastPos[1]-shownPos[1];
     if(Math.abs(dl)>1e-8||Math.abs(dn)>1e-8){shownPos[0]+=dl*0.12;shownPos[1]+=dn*0.12;meMk.setLngLat(lnglat(shownPos));moved=true}
   }
-  const want=mode==='view'||!cfg.rotate?0:(heading==null?shownBear:heading); // bearing = the compass direction shown at the top
+  const want=mode==='view'||mode==='preview'||!cfg.rotate?0:(heading==null?shownBear:heading); // bearing = the compass direction shown at the top
   const d=((want-shownBear+540)%360)-180,turn=Math.abs(d)>0.1;
   if(turn)shownBear=(shownBear+d*0.12+360)%360;
-  if(follow&&shownPos&&(moved||turn||!map.isMoving()&&map.getBearing()!==shownBear))map.jumpTo({center:lnglat(shownPos),bearing:shownBear});
+  if(map.isZooming())return; // a pinch or the +/- buttons are zooming: leave the camera to them
+  if(follow&&shownPos&&(moved||turn||map.getBearing()!==shownBear))map.jumpTo({center:lnglat(shownPos),bearing:shownBear});
   else if(turn)map.setBearing(shownBear);
 }
 
 /* ---------- GPS ---------- */
-let watchId=null,lastPos=null,lastAcc=null,onFix=null;
+let watchId=null,lastPos=null,lastAcc=null,onFix=null,lastFixAt=0,hiddenAt=0,gapNote=false;
 function startGps(cb){
   onFix=cb;
   if(!navigator.geolocation){banner(T('gpsNone'),'bad');return}
   if(watchId!=null)return;
   watchId=navigator.geolocation.watchPosition(pos=>{
-    lastPos=[pos.coords.latitude,pos.coords.longitude];lastAcc=Math.round(pos.coords.accuracy);
+    lastPos=[pos.coords.latitude,pos.coords.longitude];lastAcc=Math.round(pos.coords.accuracy);lastFixAt=Date.now();
     if(!meMk){meMk=marker(lastPos,'me');shownPos=lastPos.slice();if(follow)map.jumpTo({center:lnglat(lastPos),zoom:18})}
     accCircle(lastPos,lastAcc);
     const c=pos.coords;if(!compassSeen&&c.heading!=null&&!isNaN(c.heading)&&(c.speed||0)>0.6)setHeading(c.heading);
@@ -577,6 +585,18 @@ function startGps(cb){
   },err=>{banner(err.code===1?T('gpsDenied'):T('waitGps'),err.code===1?'bad':'')},{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 }
 function stopGps(){if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=null;onFix=null}
+// Browsers pause location while another app is in front, and some never resume the old watch: start a fresh one.
+function restartGps(){if(watchId==null)return;const cb=onFix;navigator.geolocation.clearWatch(watchId);watchId=null;startGps(cb)}
+const recording=()=>(mode==='lay'&&lay)||(mode==='follow'&&run);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){hiddenAt=Date.now();return}
+  if(!mode||watchId==null)return;
+  restartGps();
+  if(recording()&&hiddenAt&&Date.now()-hiddenAt>8000){gapNote=true;toast(T('backGap',fmtT(Date.now()-hiddenAt)))}
+  hiddenAt=0;
+});
+// watchdog: no reading for 20 seconds while the page is open means the watch died quietly
+setInterval(()=>{if(mode&&watchId!=null&&document.visibilityState==='visible'&&lastFixAt&&Date.now()-lastFixAt>20000){lastFixAt=Date.now();restartGps()}},5000);
 const GOOD_ACC=25; // ignore fixes worse than this (meters) when recording
 
 /* ---------- screen chrome ---------- */
@@ -660,10 +680,10 @@ $('saveDiscard').onclick=async()=>{$('saveDlg').close();if(await ask(T('discardA
 // state while tracking: {id,start,age,found:[],path:[[lat,lng,t,dev]],prog}
 let tr=null,geo=null,run=null,runLine=null,artMk=[],wasOff=false,lastProg=null;
 const OFF=10; // meters from the laid track that count as "off"
-function startFollow(id,resume){
+function startFollow(id,resume,preview){
   tr=tracks().find(x=>x.id===id);if(!tr)return renderHome();
   const finished=!resume&&tr.runs&&tr.runs.length;
-  mode=finished?'view':'follow';setTimeout(syncRotBtn,0);run=resume||null;openScreen(tr.name);clearMap();runLine=null;lastProg=run?run.prog:null;wasOff=false;
+  mode=finished?'view':preview?'preview':'follow';setTimeout(syncRotBtn,0);run=resume||null;openScreen(tr.name);clearMap();runLine=null;lastProg=run?run.prog:null;wasOff=false;
   geo=prepare(tr);
   casedLine(tr.pts,'#2F9E55');
   geo.turns.forEach(t=>marker(t.ll,'turn'));
@@ -677,6 +697,7 @@ function startFollow(id,resume){
     clearInterval(tick);renderView();return;
   }
   drawArts();if(run)drawRun();
+  if(preview){shownBear=0;map.setBearing(0)}
   fitTo(tr.pts);setFollow(!!run);
   startGps((p,acc,t)=>{
     const loc=locate(geo,p,lastProg);
@@ -689,6 +710,14 @@ function startFollow(id,resume){
     curLoc=loc;if(run)checkAlerts();renderFollow();
   });
   clearInterval(tick);tick=setInterval(renderFollow,1000);renderFollow();
+}
+// preview: the whole saved track north-up, with its numbers; your position shows if GPS is on
+function renderPreview(){
+  setStats([[T('sAge'),fmtT(Date.now()-tr.start)],[T('sDist'),steps(geo.len)],[T('sTurns'),geo.turns.length],[T('sArts'),tr.arts.length]]);
+  $('mainBtn').textContent=T('follow');$('mainBtn').className='btn';$('mainBtn').disabled=false;
+  $('sideBtn').textContent=T('share');$('sideBtn').disabled=false;
+  $('hintLine').textContent=T('previewHint');
+  if(lastPos&&curLoc)banner(T('fromTrack',Math.round(curLoc.d)));else banner('');
 }
 let curLoc=null,viewRun=null;
 function drawArts(){
@@ -706,6 +735,7 @@ function toggleFound(k){
   store('gps-run',JSON.stringify(run));drawArts();renderFollow();
 }
 function renderFollow(){
+  if(mode==='preview')return renderPreview();
   if(mode!=='follow')return;
   const age=run?run.age:Date.now()-tr.start,n=tr.arts.length,f=run?run.found.length:0;
   const d=curLoc?Math.round(curLoc.d):null;
@@ -760,8 +790,8 @@ function followSide(){
   if(left.length)toggleFound(left[0].k);
 }
 $('sumClose').onclick=()=>$('sumDlg').close();
-$('mainBtn').onclick=()=>{if(mode==='lay')layMain();else if(mode==='view')showSummary(viewRun);else followMain()};
-$('sideBtn').onclick=()=>{if(mode==='lay')layMark();else if(mode==='view')shareTrack(tr);else followSide()};
+$('mainBtn').onclick=()=>{if(mode==='lay')layMain();else if(mode==='view')showSummary(viewRun);else if(mode==='preview'){startCompass();stopGps();startFollow(tr.id)}else followMain()};
+$('sideBtn').onclick=()=>{if(mode==='lay')layMark();else if(mode==='view'||mode==='preview')shareTrack(tr);else followSide()};
 
 /* ---------- settings ---------- */
 const DEF={alert:'vibrate',alertDist:10,lead:0,rotate:true};
@@ -829,7 +859,7 @@ function startCompass(){
     else if(window.DeviceOrientationEvent)listen();
   }catch(e){}
 }
-function syncRotBtn(){const b=$('rotBtn');b.textContent=cfg.rotate?T('rotOn'):T('rotOff');b.setAttribute('aria-pressed',String(cfg.rotate));b.hidden=mode==='view'}
+function syncRotBtn(){const b=$('rotBtn');b.textContent=cfg.rotate?T('rotOn'):T('rotOff');b.setAttribute('aria-pressed',String(cfg.rotate));b.hidden=mode==='view'||mode==='preview'}
 $('rotBtn').onclick=()=>{cfg.rotate=!cfg.rotate;store('gps-settings',JSON.stringify(cfg));if(cfg.rotate)startCompass();syncRotBtn();applyBearing(true)};
 
 /* ---------- sharing a track with another phone ---------- */
