@@ -67,6 +67,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
 .stat{background:var(--paper);padding:6px 8px;text-align:center;min-width:0}
 .stat .k{font-size:12px;color:var(--muted);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat .v{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat .v small{display:block;font-size:12px;color:var(--muted);line-height:1.1}
 .stat .v.ok{color:var(--ok)} .stat .v.bad{color:var(--bad)}
 .mapwrap{position:relative;min-height:0}
 .map{position:absolute;inset:0}
@@ -253,7 +254,8 @@ he:{
   backGap:t=>`המעקב נעצר למשך ${t} כשהעמוד לא היה פתוח. הקטע שהלכת בינתיים סומן בקו ישר.`,
   preview:'הצג מסלול',sTurns:'פניות',previewHint:'זה המסלול שהונח: הדגל, הפניות והחפצים. כשהכלב מוכן, לחץ "צא לגישוש".',fromTrack:m=>`אתה במרחק ${m} מ' מהמסלול`,
   layReady:'עמוד בנקודת ההתחלה ולחץ "התחל הנחה". הדגל יונח איפה שאתה עומד.',
-  artMarked:k=>`חפץ ${k} סומן`,tooShort:'המסלול קצר מדי. לך לפחות כמה מטרים לפני שמסיימים.',
+  artMarked:(k,s,m)=>`חפץ ${k} סומן · ${s} צעדים (${m} מ') מה${k>1?'חפץ הקודם':'דגל'}`,
+  sTrack:'מסלול',sSinceFlag:'מהדגל',sSinceArt:k=>`מחפץ ${k}`,tooShort:'המסלול קצר מדי. לך לפחות כמה מטרים לפני שמסיימים.',
   saveTitle:'שמירת המסלול',nameLabel:'שם המסלול',save:'שמור',discardTrack:'מחק בלי לשמור',
   saveMeta:(m,s,a,t)=>`${m} מ' (${s} צעדים), ${a} חפצים, ${t} הליכה. הזמן ממשיך לרוץ עד שתתחיל לגשש.`,
   defName:d=>`מסלול ${d}`,saved:'המסלול נשמר',
@@ -313,7 +315,8 @@ en:{
   backGap:t=>`Tracking paused for ${t} while this page was not open. The stretch you walked meanwhile is drawn as a straight line.`,
   preview:'Show track',sTurns:'Turns',previewHint:'This is the laid track: the flag, the turns and the articles. When the dog is ready, tap "Go tracking".',fromTrack:m=>`You are ${m} m from the track`,
   layReady:'Stand at the start and tap "Start laying". The flag is placed where you stand.',
-  artMarked:k=>`Article ${k} marked`,tooShort:'The track is too short. Walk at least a few meters before finishing.',
+  artMarked:(k,s,m)=>`Article ${k} marked · ${s} steps (${m} m) from the ${k>1?'previous article':'flag'}`,
+  sTrack:'Track',sSinceFlag:'From flag',sSinceArt:k=>`From article ${k}`,tooShort:'The track is too short. Walk at least a few meters before finishing.',
   saveTitle:'Save the track',nameLabel:'Track name',save:'Save',discardTrack:'Delete without saving',
   saveMeta:(m,s,a,t)=>`${m} m (${s} steps), ${a} articles, ${t} walking. The age keeps counting until you start tracking.`,
   defName:d=>`Track ${d}`,saved:'Track saved',
@@ -373,7 +376,8 @@ de:{
   backGap:t=>`Die Aufzeichnung war ${t} pausiert, während die Seite nicht offen war. Die Strecke dazwischen ist als gerade Linie gezeichnet.`,
   preview:'Fährte ansehen',sTurns:'Winkel',previewHint:'Das ist die gelegte Fährte: Abgang, Winkel und Gegenstände. Wenn der Hund bereit ist, tippe auf „Ausarbeiten“.',fromTrack:m=>`Du bist ${m} m von der Fährte entfernt`,
   layReady:'Stell dich an den Abgang und tippe auf „Legen starten“. Die Fahne wird dort gesetzt, wo du stehst.',
-  artMarked:k=>`Gegenstand ${k} markiert`,tooShort:'Die Fährte ist zu kurz. Geh zuerst ein paar Meter.',
+  artMarked:(k,s,m)=>`Gegenstand ${k} markiert · ${s} Schritte (${m} m) ${k>1?'seit dem letzten Gegenstand':'seit dem Abgang'}`,
+  sTrack:'Fährte',sSinceFlag:'Seit Abgang',sSinceArt:k=>`Seit Gegenst. ${k}`,tooShort:'Die Fährte ist zu kurz. Geh zuerst ein paar Meter.',
   saveTitle:'Fährte speichern',nameLabel:'Name der Fährte',save:'Speichern',discardTrack:'Ohne Speichern löschen',
   saveMeta:(m,s,a,t)=>`${m} m (${s} Schritte), ${a} Gegenstände, ${t} gegangen. Die Liegezeit läuft weiter, bis du mit dem Ausarbeiten beginnst.`,
   defName:d=>`Fährte ${d}`,saved:'Fährte gespeichert',
@@ -689,7 +693,7 @@ const GOOD_ACC=25; // ignore fixes worse than this (meters) when recording
 /* ---------- screen chrome ---------- */
 let mode=null; // 'lay' | 'follow'
 function banner(text,kind){const b=$('banner');b.hidden=!text;b.textContent=text||'';b.className='banner'+(kind?' '+kind:'')}
-function setStats(items){$('stats').innerHTML=items.map(([k,v,c])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}</div></div>`).join('')}
+function setStats(items){$('stats').innerHTML=items.map(([k,v,c,sub])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}${sub!=null?`<small>${sub}</small>`:''}</div></div>`).join('')}
 function openScreen(title){
   freeRot=false;
   $('home').hidden=true;$('screen').hidden=false;$('sTitle').textContent=title;
@@ -773,8 +777,10 @@ function planBanner(){
 function renderLay(){
   if(mode!=='lay')return;
   drawPlan();
-  const m=lay?Math.round(pathLen(lay.pts)):0;
-  setStats([[T('sTime'),lay?fmtT(Date.now()-lay.start):'0:00'],[T('sDist'),steps(m)],[T('sArts'),lay?lay.arts.length:0],[T('sGps'),lastAcc!=null?'±'+lastAcc:'–',lastAcc!=null&&lastAcc>GOOD_ACC?'bad':'']]);
+  const m=lay?pathLen(lay.pts):0,na=lay?lay.arts.length:0,leg=na?m-lay.arts[na-1].cum:m;
+  setStats([[T('sTime'),lay?fmtT(Date.now()-lay.start):'0:00'],[T('sTrack'),steps(m),'',T('m',Math.round(m))],
+    [na?T('sSinceArt',na):T('sSinceFlag'),steps(leg),'',T('m',Math.round(leg))],
+    [T('sGps'),lastAcc!=null?'±'+lastAcc:'–',lastAcc!=null&&lastAcc>GOOD_ACC?'bad':'']]);
   const mb=$('mainBtn'),sb=$('sideBtn');
   mb.innerHTML=lay?'<svg class="flagico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg><span></span>':'<svg class="flagico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h12l-3 4 3 4H6z" fill="currentColor"/></svg><span></span>';
   mb.querySelector('span').textContent=lay?T('stopLay'):T('startLay');
@@ -803,10 +809,10 @@ function layMain(){
 }
 function layMark(){
   if(!lay||!lastPos)return;
-  const last=lay.pts[lay.pts.length-1];
+  const last=lay.pts[lay.pts.length-1],prevCum=lay.arts.length?lay.arts[lay.arts.length-1].cum:0;
   if(hav(last,lastPos)>=1)lay.pts.push([lastPos[0],lastPos[1],Date.now()]);
   lay.arts.push({ll:[lastPos[0],lastPos[1]],cum:pathLen(lay.pts),t:Date.now()});
-  store('gps-lay',JSON.stringify(lay));drawLay();buzz(60);toast(T('artMarked',lay.arts.length));renderLay();
+  store('gps-lay',JSON.stringify(lay));drawLay();buzz(60);const seg=lay.arts[lay.arts.length-1].cum-prevCum;toast(T('artMarked',lay.arts.length,steps(seg),Math.round(seg)));renderLay();
 }
 $('saveForm').onsubmit=e=>{
   e.preventDefault();
@@ -855,7 +861,7 @@ function startFollow(id,resume,preview){
 }
 // preview: the whole saved track north-up, with its numbers; your position shows if GPS is on
 function renderPreview(){
-  setStats([[T('sAge'),fmtT(Date.now()-tr.start)],[T('sDist'),steps(geo.len)],[T('sTurns'),geo.turns.length],[T('sArts'),tr.arts.length]]);
+  setStats([[T('sAge'),fmtT(Date.now()-tr.start)],[T('sDist'),steps(geo.len),'',T('m',Math.round(geo.len))],[T('sTurns'),geo.turns.length],[T('sArts'),tr.arts.length]]);
   $('mainBtn').textContent=T('follow');$('mainBtn').className='btn';$('mainBtn').disabled=false;
   $('sideBtn').textContent=T('share');$('sideBtn').disabled=false;
   $('hintLine').textContent=T('previewHint');
