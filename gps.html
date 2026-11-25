@@ -74,6 +74,13 @@ h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
 .banner{position:absolute;top:10px;inset-inline:10px;z-index:500;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .banner.bad{background:var(--bad);border-color:var(--bad);color:#fff}
 .banner.ok{border-color:var(--ok)}
+.banner .note{display:block;margin-top:4px;font-weight:700;color:#7A5208;background:#FFF3D1;border-radius:6px;padding:3px 8px}
+.notechip{position:absolute;bottom:24px;right:12px;z-index:500;border:1.5px solid #B97A12;background:#FFF3D1;color:#5A3D05;border-radius:12px;padding:10px 14px;font:700 15px var(--f-body);box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer}
+.mk-art.hasnote span::after{content:'';position:absolute;top:-5px;right:-5px;width:9px;height:9px;border-radius:50%;background:#1E6FD9;border:2px solid #fff}
+.mk-art span{position:relative}
+dialog textarea{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);resize:vertical;min-height:70px}
+.qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.qnotes button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:16px;padding:6px 11px;font:600 14px var(--f-body)}
 .mapbtns{position:absolute;bottom:24px;left:12px;z-index:500;display:flex;flex-direction:column;gap:8px}
 .mapbtns button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:8px 10px;font-weight:600;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .mapbtns button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -170,6 +177,7 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
   <div class="mapwrap">
     <div id="map" class="map"></div>
     <div class="banner" id="banner" hidden></div>
+    <button class="notechip" id="noteChip" hidden></button>
     <div class="mapbtns">
       <button id="rotBtn" aria-pressed="false"></button>
       <button id="followBtn" aria-pressed="true" data-i18n="center"></button>
@@ -203,6 +211,17 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
     <button class="btn ghost" id="askNo" data-i18n="cancel"></button>
     <button class="btn warn" id="askYes"></button>
   </div>
+</dialog>
+<dialog id="noteDlg">
+  <form method="dialog" id="noteForm">
+    <h3 id="noteTitle"></h3>
+    <label for="noteIn"><span data-i18n="noteLabel"></span><textarea id="noteIn" maxlength="140" rows="3"></textarea></label>
+    <div class="qnotes" id="qNotes"></div>
+    <div class="dacts">
+      <button type="button" class="btn ghost" id="noteCancel" data-i18n="cancel"></button>
+      <button type="submit" class="btn" data-i18n="save"></button>
+    </div>
+  </form>
 </dialog>
 <dialog id="sumDlg">
   <h3 data-i18n="sumTitle"></h3>
@@ -272,6 +291,8 @@ he:{
   defName:d=>`מסלול ${d}`,saved:'המסלול נשמר',
   discardAsk:'למחוק את המסלול שהנחת בלי לשמור?',discardYes:'מחק',
   sAge:'גיל המסלול',sRun:'זמן גישוש',sOff:'מהמסלול',sFound:'נמצאו',
+  addNote:k=>`📝 הערה לחפץ ${k}`,noteTitle:k=>`הערה לחפץ ${k}`,noteLabel:'מה כדאי לדעת כשמגיעים לחפץ? (יוצג למגשש כשהכלב קרוב)',noteSaved:k=>`ההערה לחפץ ${k} נשמרה`,
+  quickNotes:['בעשב גבוה','ליד שיח','על שביל','ליד עמוד','בשקע','במעבר בין שטחים'],
   startRun:'התחל גישוש',stopRun:'סיים גישוש',artFound:'חפץ נמצא',artMissed:'לא נמצא',
   autoFound:k=>`חפץ ${k} סומן כנמצא (עמדת 10 שניות לידו). לחיצה על החפץ במפה משנה.`,missedMsg:k=>`חפץ ${k} סומן כלא נמצא`,allDone:'כל החפצים סומנו',
   artN:k=>`חפץ ${k}`,resFound:'נמצא',resMissed:'לא נמצא',sumMissed:'חפצים שלא נמצאו',
@@ -335,6 +356,8 @@ en:{
   defName:d=>`Track ${d}`,saved:'Track saved',
   discardAsk:'Delete the track you laid without saving it?',discardYes:'Delete',
   sAge:'Track age',sRun:'Tracking time',sOff:'Off track',sFound:'Found',
+  addNote:k=>`📝 Note for article ${k}`,noteTitle:k=>`Note for article ${k}`,noteLabel:'What should the handler know at this article? (shown when the dog gets close)',noteSaved:k=>`Note for article ${k} saved`,
+  quickNotes:['In tall grass','By a bush','On a path','By a pole','In a dip','At a cover change'],
   startRun:'Start tracking',stopRun:'Finish tracking',artFound:'Article found',artMissed:'Not found',
   autoFound:k=>`Article ${k} marked found (you stood by it for 10 seconds). Tap it on the map to change.`,missedMsg:k=>`Article ${k} marked not found`,allDone:'All articles marked',
   artN:k=>`Article ${k}`,resFound:'Found',resMissed:'Not found',sumMissed:'Articles not found',
@@ -398,6 +421,8 @@ de:{
   defName:d=>`Fährte ${d}`,saved:'Fährte gespeichert',
   discardAsk:'Die gelegte Fährte ohne Speichern löschen?',discardYes:'Löschen',
   sAge:'Liegezeit',sRun:'Ausarbeitung',sOff:'Abstand',sFound:'Gefunden',
+  addNote:k=>`📝 Notiz zu Gegenstand ${k}`,noteTitle:k=>`Notiz zu Gegenstand ${k}`,noteLabel:'Was sollte der Hundeführer hier wissen? (wird angezeigt, wenn der Hund nahe ist)',noteSaved:k=>`Notiz zu Gegenstand ${k} gespeichert`,
+  quickNotes:['Im hohen Gras','Am Busch','Auf einem Weg','Am Pfosten','In einer Senke','Am Bewuchswechsel'],
   startRun:'Ausarbeiten starten',stopRun:'Ausarbeiten beenden',artFound:'Gefunden',artMissed:'Nicht gefunden',
   autoFound:k=>`Gegenstand ${k} als gefunden markiert (10 Sekunden daneben gestanden). Zum Ändern auf der Karte antippen.`,missedMsg:k=>`Gegenstand ${k} als nicht gefunden markiert`,allDone:'Alle Gegenstände markiert',
   artN:k=>`Gegenstand ${k}`,resFound:'Gefunden',resMissed:'Nicht gefunden',sumMissed:'Nicht gefunden',
@@ -629,7 +654,7 @@ const FLAG_SVG='<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3
 function marker(ll,kind,opt){
   opt=opt||{};let el,anchor='center',offset=[0,0];
   if(kind==='flag'){el=elFrom(FLAG_SVG,'mk-flag');anchor='bottom-left';offset=[-4,2]}
-  else if(kind==='art')el=elFrom(`<span><b>${opt.k}</b></span>`,'mk-art'+(opt.found?' found':'')+(opt.missed?' missed':'')+(opt.plan?' plan':''));
+  else if(kind==='art')el=elFrom(`<span><b>${opt.k}</b></span>`,'mk-art'+(opt.found?' found':'')+(opt.missed?' missed':'')+(opt.note?' hasnote':'')+(opt.plan?' plan':''));
   else if(kind==='turn')el=elFrom('','mk-turn'+(opt.plan?' plan':'')+(opt.sharp?' sharp':''));
   else el=elFrom('','mk-me');
   el.style.width=kind==='art'?'34px':'';el.style.height=kind==='art'?'34px':'';
@@ -709,9 +734,11 @@ const GOOD_ACC=25; // ignore fixes worse than this (meters) when recording
 
 /* ---------- screen chrome ---------- */
 let mode=null; // 'lay' | 'follow'
-function banner(text,kind){const b=$('banner');b.hidden=!text;b.textContent=text||'';b.className='banner'+(kind?' '+kind:'')}
+function banner(text,kind,note){const b=$('banner');b.hidden=!text;b.textContent=text||'';b.className='banner'+(kind?' '+kind:'');
+  if(text&&note){const n=document.createElement('span');n.className='note';n.textContent='📝 '+note;b.append(n)}}
 function setStats(items){$('stats').innerHTML=items.map(([k,v,c,sub])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}${sub!=null?`<small>${sub}</small>`:''}</div></div>`).join('')}
 function openScreen(title){
+  $('noteChip').hidden=true;
   freeRot=false;
   $('home').hidden=true;$('screen').hidden=false;$('sTitle').textContent=title;
   ensureMap();clearInterval(tick);
@@ -742,7 +769,7 @@ function drawLay(){
   if(!layLine)layLine=casedLine(lay.pts,'#2F9E55');
   else whenReady(()=>{const s=map.getSource(layLine.id);s&&s.setData(data)});
   if(!layFlag&&lay.pts.length)layFlag=marker(lay.pts[0],'flag');
-  layArtMk.forEach(m=>m.remove());layArtMk=lay.arts.map((a,k)=>marker(a.ll,'art',{k:k+1}));
+  layArtMk.forEach(m=>m.remove());layArtMk=lay.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,note:a.note,onClick:()=>editNote(k)}));
 }
 // Draw the plan. Before the start it follows you and the phone's heading, so you can see where it will go;
 // at the start it is pinned to the flag. Redrawn only when its position or heading really changed.
@@ -824,19 +851,39 @@ function layMain(){
   $('saveMeta').textContent=T('saveMeta',m,steps(m),lay.arts.length,fmtT(lay.end-lay.start));
   $('saveDlg').showModal();setTimeout(()=>$('nameIn').select(),50);
 }
+// a note on an article, for whoever tracks it later ("under the bush", "on the road edge")
+let noteK=null,noteChipTimer=null;
+function offerNote(k){
+  const c=$('noteChip');c.textContent=T('addNote',k+1);c.hidden=false;c.onclick=()=>editNote(k);
+  clearTimeout(noteChipTimer);noteChipTimer=setTimeout(()=>{c.hidden=true},15000);
+}
+function editNote(k){
+  if(!lay||!lay.arts[k])return;noteK=k;$('noteChip').hidden=true;
+  $('noteTitle').textContent=T('noteTitle',k+1);$('noteIn').value=lay.arts[k].note||'';
+  $('qNotes').innerHTML='';T('quickNotes').forEach(q=>{const b=document.createElement('button');b.type='button';b.textContent=q;
+    b.onclick=()=>{const v=$('noteIn').value.trim();$('noteIn').value=v?v+', '+q:q};$('qNotes').append(b)});
+  $('noteDlg').showModal();
+}
+$('noteCancel').onclick=()=>$('noteDlg').close();
+$('noteForm').onsubmit=e=>{
+  e.preventDefault();$('noteDlg').close();
+  if(!lay||noteK==null||!lay.arts[noteK])return;
+  const v=$('noteIn').value.trim().slice(0,140);if(v)lay.arts[noteK].note=v;else delete lay.arts[noteK].note;
+  store('gps-lay',JSON.stringify(lay));drawLay();if(v)toast(T('noteSaved',noteK+1));
+};
 function layMark(){
   if(!lay||!lastPos)return;
   const last=lay.pts[lay.pts.length-1],prevCum=lay.arts.length?lay.arts[lay.arts.length-1].cum:0;
   if(hav(last,lastPos)>=1)lay.pts.push([lastPos[0],lastPos[1],Date.now()]);
   lay.arts.push({ll:[lastPos[0],lastPos[1]],cum:pathLen(lay.pts),t:Date.now()});
-  store('gps-lay',JSON.stringify(lay));drawLay();buzz(60);const seg=lay.arts[lay.arts.length-1].cum-prevCum;toast(T('artMarked',lay.arts.length,steps(seg),Math.round(seg)));renderLay();
+  store('gps-lay',JSON.stringify(lay));drawLay();buzz(60);const seg=lay.arts[lay.arts.length-1].cum-prevCum;toast(T('artMarked',lay.arts.length,steps(seg),Math.round(seg)));offerNote(lay.arts.length-1);renderLay();
 }
 $('saveForm').onsubmit=e=>{
   e.preventDefault();
   const name=$('nameIn').value.trim()||$('nameIn').placeholder||T('defName','');
   // what is saved is the track actually walked; the plan is kept only as a note of where it came from
-  const tr={id:'t'+Date.now().toString(36),name,start:lay.start,end:lay.end,pts:lay.pts,arts:lay.arts.map(a=>({ll:a.ll,cum:a.cum,t:a.t})),runs:[],plan:plan?{code:plan.code,name:plan.name}:undefined};
-  const all=tracks();all.push(tr);saveTracks(all);drop('gps-lay');lay=null;plan=null;$('saveDlg').close();
+  const tr={id:'t'+Date.now().toString(36),name,start:lay.start,end:lay.end,pts:lay.pts,arts:lay.arts.map(a=>Object.assign({ll:a.ll,cum:a.cum,t:a.t},a.note?{note:a.note}:{})),runs:[],plan:plan?{code:plan.code,name:plan.name}:undefined};
+  const all=tracks();all.push(tr);saveTracks(all);drop('gps-lay');lay=null;plan=null;$('saveDlg').close();$('noteChip').hidden=true;
   stopGps();keepAwake(false);clearMap();toast(T('saved'));renderHome();
 };
 $('saveDiscard').onclick=async()=>{$('saveDlg').close();if(await ask(T('discardAsk'),T('discardYes'))){drop('gps-lay');lay=null;plan=null;stopGps();keepAwake(false);clearMap();renderHome()}else $('saveDlg').showModal()};
@@ -855,7 +902,7 @@ function startFollow(id,resume,preview){
   marker(tr.pts[0],'flag');
   if(finished){
     const r=tr.runs[tr.runs.length-1];run=null;viewRun=r;
-    artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k),missed:(r.missed||[]).includes(k)}));
+    artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k),missed:(r.missed||[]).includes(k),note:a.note,onClick:()=>a.note&&toast(T('artN',k+1)+': '+a.note)}));
     if(r.path.length)casedLine(r.path,'#7B4FD6',true);
     shownBear=0;map.setBearing(0);
     fitTo(tr.pts.concat(r.path));setFollow(false);
@@ -887,7 +934,7 @@ function renderPreview(){
 let curLoc=null,viewRun=null;
 function drawArts(){
   artMk.forEach(m=>m.remove());
-  artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:!!(run&&run.found.includes(k)),missed:!!(run&&run.missed&&run.missed.includes(k)),onClick:()=>toggleFound(k)}));
+  artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:!!(run&&run.found.includes(k)),missed:!!(run&&run.missed&&run.missed.includes(k)),note:tr.arts[k].note,onClick:()=>run?toggleFound(k):tr.arts[k].note&&toast(T('artN',k+1)+': '+tr.arts[k].note)}));
 }
 function drawRun(){
   if(!runLine){runLine=casedLine(run.path,'#7B4FD6',true);return}
@@ -937,7 +984,7 @@ function renderFollow(){
   if(curLoc.d>OFF){banner(T('offBy',Math.round(curLoc.d)),'bad');return}
   const prog=(lastProg||0)+cfg.lead; // where the dog is, about this far ahead of the handler
   const near=tr.arts.map((a,k)=>({k,ahead:a.cum-prog})).filter(x=>!run.found.includes(x.k)&&!(run.missed||[]).includes(x.k)&&x.ahead>-8&&x.ahead<15).sort((a,b)=>a.ahead-b.ahead)[0];
-  if(near){banner(T('nearArt',near.k+1).replace('{m}',Math.max(0,Math.round(near.ahead))),'ok');return}
+  if(near){banner(T('nearArt',near.k+1).replace('{m}',Math.max(0,Math.round(near.ahead))),'ok',tr.arts[near.k].note);return}
   const nt=geo.turns.find(t=>t.cum>prog+3);
   banner(nt?T('nextTurn',T(nt.dir),Math.round(nt.cum-prog)):T('endIn',Math.max(0,Math.round(geo.len-prog))),'ok');
 }
@@ -1037,7 +1084,7 @@ function checkAlerts(){
   geo.turns.forEach((t,i)=>{const ahead=t.cum-eff;
     if(!run.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.t.push(i);alertNow(cfg.alert,T('sayTurn',T(t.dir),Math.max(0,Math.round(ahead))),'turn')}});
   tr.arts.forEach((a,k)=>{const ahead=a.cum-eff;
-    if(!run.found.includes(k)&&!(run.missed||[]).includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead))),'art')}});
+    if(!run.found.includes(k)&&!(run.missed||[]).includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead)))+(a.note?'. '+a.note:''),'art')}});
 }
 
 /* ---------- map follows the phone's heading ---------- */
@@ -1075,7 +1122,7 @@ const unb64u=str=>{const s=atob(str.replace(/-/g,'+').replace(/_/g,'/'));const b
 async function packTrack(t){
   const P=projector(t.pts[0]),keep=rdp(t.pts.map(P),1),q=v=>Math.round(v*1e5),pts=[];let a0=0,b0=0;
   keep.forEach(i=>{const a=q(t.pts[i][0]),b=q(t.pts[i][1]);pts.push(a-a0,b-b0);a0=a;b0=b});
-  const json=JSON.stringify({v:1,n:t.name,s:t.start,e:t.end,p:pts,a:t.arts.map(x=>[q(x.ll[0]),q(x.ll[1])])});
+  const json=JSON.stringify({v:1,n:t.name,s:t.start,e:t.end,p:pts,a:t.arts.map(x=>x.note?[q(x.ll[0]),q(x.ll[1]),x.note]:[q(x.ll[0]),q(x.ll[1])])});
   if(window.CompressionStream){
     const st=new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'));
     return 'z'+b64u(new Uint8Array(await new Response(st).arrayBuffer()));
@@ -1090,7 +1137,7 @@ async function unpackTrack(code){
   if(pts.length<2)throw new Error('short');
   const t={id:'t'+Date.now().toString(36),name:String(o.n||'').slice(0,60),start:+o.s||Date.now(),end:+o.e||Date.now(),pts,arts:[],runs:[]};
   const g=prepare(t);
-  t.arts=(o.a||[]).map(x=>{const ll=[x[0]/1e5,x[1]/1e5];return{ll,cum:locate(g,ll,null).cum,t:0}});
+  t.arts=(o.a||[]).map(x=>{const ll=[x[0]/1e5,x[1]/1e5],a={ll,cum:locate(g,ll,null).cum,t:0};if(typeof x[2]==='string'&&x[2])a.note=x[2].slice(0,140);return a});
   return t;
 }
 async function shareTrack(t){
