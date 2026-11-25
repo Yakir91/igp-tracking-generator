@@ -79,6 +79,13 @@ h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
 .mapbtns button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--line)}
 .bottom .btn{padding:15px 10px;font-size:18px}
+.bottom.three{grid-template-columns:1.1fr 1fr 1fr}.bottom.three .btn{font-size:16px;padding-inline:6px}
+.btn.miss{background:transparent;color:var(--bad);border:1.5px solid var(--bad)}
+.artres{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-top:14px}
+.artres b{font-family:var(--f-mono);padding-inline-end:4px}
+.artres button{padding:9px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);font:600 15px var(--f-body)}
+.artres button.on.f{background:#2F9E55;border-color:#2F9E55;color:#fff}
+.artres button.on.m{background:var(--bad);border-color:var(--bad);color:#fff}
 .flagico{width:22px;height:22px;flex:none}
 .note{font-size:13px;color:var(--muted);padding-block:6px;background:var(--paper)}
 
@@ -90,6 +97,8 @@ h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:8px 0 0}
 .mk-art b{transform:rotate(-45deg);color:#1B1406;font:700 13px var(--f-body)}
 .mk-art.found span{background:#2F9E55}
 .mk-art.found b{color:#fff}
+.mk-art.missed span{background:#C8442B}
+.mk-art.missed b{color:#fff}
 .mk-art.plan span{background:rgba(255,255,255,.88);border:2px dashed #B97A12;box-shadow:none}
 .mk-art.plan b{color:#7A5208}
 .mk-turn.plan{border-color:#C99A06;background:#FFF6CF}
@@ -172,6 +181,7 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
     <div class="bottom gut">
       <button class="btn" id="mainBtn"></button>
       <button class="btn ghost" id="sideBtn"></button>
+      <button class="btn miss" id="missBtn" hidden></button>
     </div>
   </div>
 </section>
@@ -197,6 +207,7 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
 <dialog id="sumDlg">
   <h3 data-i18n="sumTitle"></h3>
   <dl class="sum" id="sumList"></dl>
+  <div class="artres" id="artRes"></div>
   <div class="dacts"><button class="btn" id="sumClose" data-i18n="close"></button></div>
 </dialog>
 <dialog id="setDlg">
@@ -261,14 +272,16 @@ he:{
   defName:d=>`מסלול ${d}`,saved:'המסלול נשמר',
   discardAsk:'למחוק את המסלול שהנחת בלי לשמור?',discardYes:'מחק',
   sAge:'גיל המסלול',sRun:'זמן גישוש',sOff:'מהמסלול',sFound:'נמצאו',
-  startRun:'התחל גישוש',stopRun:'סיים גישוש',artFound:'חפץ נמצא',
+  startRun:'התחל גישוש',stopRun:'סיים גישוש',artFound:'חפץ נמצא',artMissed:'לא נמצא',
+  autoFound:k=>`חפץ ${k} סומן כנמצא (עמדת 10 שניות לידו). לחיצה על החפץ במפה משנה.`,missedMsg:k=>`חפץ ${k} סומן כלא נמצא`,allDone:'כל החפצים סומנו',
+  artN:k=>`חפץ ${k}`,resFound:'נמצא',resMissed:'לא נמצא',sumMissed:'חפצים שלא נמצאו',
   runReady:'הגיל של המסלול נספר מתחילת ההנחה. לחץ "התחל גישוש" כשהכלב יוצא מהדגל.',
   runHint:'הקו הירוק הוא המסלול שהונח. הקו הסגול המקווקו הוא הדרך שלך עכשיו.',
   onTrack:'על המסלול',offBy:m=>`רחוק מהמסלול ${m} מ'`,
   nextTurn:(d,m)=>`הפנייה הבאה: ${d} בעוד ${m} מ'`,right:'ימינה',left:'שמאלה',
   endIn:m=>`אין עוד פניות. סוף המסלול בעוד ${m} מ'`,
   nearArt:k=>`חפץ ${k} לפניך, כ-${'{m}'} מ'`,
-  foundMsg:k=>`חפץ ${k} נמצא`,unfoundMsg:k=>`חפץ ${k} סומן כלא נמצא`,allFound:'כל החפצים נמצאו',
+  foundMsg:k=>`חפץ ${k} נמצא`,unfoundMsg:k=>`הסימון של חפץ ${k} בוטל`,allFound:'כל החפצים נמצאו',
   stopAsk:'לסיים את הגישוש?',stopYes:'סיים',
   sumTitle:'סיכום הגישוש',sumAge:'גיל המסלול בהתחלה',sumTime:'זמן גישוש',sumFound:'חפצים שנמצאו',sumOf:(f,n)=>`${f} מתוך ${n}`,
   sumMax:'הסטייה הגדולה ביותר',sumOn:'זמן על המסלול',sumProg:'התקדמות לאורך המסלול',close:'סגור',
@@ -322,14 +335,16 @@ en:{
   defName:d=>`Track ${d}`,saved:'Track saved',
   discardAsk:'Delete the track you laid without saving it?',discardYes:'Delete',
   sAge:'Track age',sRun:'Tracking time',sOff:'Off track',sFound:'Found',
-  startRun:'Start tracking',stopRun:'Finish tracking',artFound:'Article found',
+  startRun:'Start tracking',stopRun:'Finish tracking',artFound:'Article found',artMissed:'Not found',
+  autoFound:k=>`Article ${k} marked found (you stood by it for 10 seconds). Tap it on the map to change.`,missedMsg:k=>`Article ${k} marked not found`,allDone:'All articles marked',
+  artN:k=>`Article ${k}`,resFound:'Found',resMissed:'Not found',sumMissed:'Articles not found',
   runReady:'The track age counts from the start of laying. Tap "Start tracking" when the dog leaves the flag.',
   runHint:'The green line is the laid track. The dashed purple line is your path now.',
   onTrack:'On the track',offBy:m=>`${m} m off the track`,
   nextTurn:(d,m)=>`Next turn: ${d} in ${m} m`,right:'right',left:'left',
   endIn:m=>`No more turns. End of the track in ${m} m`,
   nearArt:k=>`Article ${k} ahead, about ${'{m}'} m`,
-  foundMsg:k=>`Article ${k} found`,unfoundMsg:k=>`Article ${k} set back to not found`,allFound:'All articles found',
+  foundMsg:k=>`Article ${k} found`,unfoundMsg:k=>`Article ${k} unmarked`,allFound:'All articles found',
   stopAsk:'Finish this tracking run?',stopYes:'Finish',
   sumTitle:'Tracking summary',sumAge:'Track age at start',sumTime:'Tracking time',sumFound:'Articles found',sumOf:(f,n)=>`${f} of ${n}`,
   sumMax:'Largest deviation',sumOn:'Time on the track',sumProg:'Progress along the track',close:'Close',
@@ -383,14 +398,16 @@ de:{
   defName:d=>`Fährte ${d}`,saved:'Fährte gespeichert',
   discardAsk:'Die gelegte Fährte ohne Speichern löschen?',discardYes:'Löschen',
   sAge:'Liegezeit',sRun:'Ausarbeitung',sOff:'Abstand',sFound:'Gefunden',
-  startRun:'Ausarbeiten starten',stopRun:'Ausarbeiten beenden',artFound:'Gefunden',
+  startRun:'Ausarbeiten starten',stopRun:'Ausarbeiten beenden',artFound:'Gefunden',artMissed:'Nicht gefunden',
+  autoFound:k=>`Gegenstand ${k} als gefunden markiert (10 Sekunden daneben gestanden). Zum Ändern auf der Karte antippen.`,missedMsg:k=>`Gegenstand ${k} als nicht gefunden markiert`,allDone:'Alle Gegenstände markiert',
+  artN:k=>`Gegenstand ${k}`,resFound:'Gefunden',resMissed:'Nicht gefunden',sumMissed:'Nicht gefunden',
   runReady:'Die Liegezeit zählt ab Beginn des Legens. Tippe auf „Ausarbeiten starten“, wenn der Hund am Abgang ansetzt.',
   runHint:'Die grüne Linie ist die gelegte Fährte. Die gestrichelte violette Linie ist dein aktueller Weg.',
   onTrack:'Auf der Fährte',offBy:m=>`${m} m neben der Fährte`,
   nextTurn:(d,m)=>`Nächster Winkel: ${d} in ${m} m`,right:'rechts',left:'links',
   endIn:m=>`Keine Winkel mehr. Ende der Fährte in ${m} m`,
   nearArt:k=>`Gegenstand ${k} voraus, ca. ${'{m}'} m`,
-  foundMsg:k=>`Gegenstand ${k} gefunden`,unfoundMsg:k=>`Gegenstand ${k} wieder als nicht gefunden markiert`,allFound:'Alle Gegenstände gefunden',
+  foundMsg:k=>`Gegenstand ${k} gefunden`,unfoundMsg:k=>`Markierung von Gegenstand ${k} entfernt`,allFound:'Alle Gegenstände gefunden',
   stopAsk:'Diesen Durchgang beenden?',stopYes:'Beenden',
   sumTitle:'Zusammenfassung',sumAge:'Liegezeit beim Start',sumTime:'Ausarbeitungszeit',sumFound:'Gefundene Gegenstände',sumOf:(f,n)=>`${f} von ${n}`,
   sumMax:'Größte Abweichung',sumOn:'Zeit auf der Fährte',sumProg:'Fortschritt entlang der Fährte',close:'Schließen',
@@ -612,7 +629,7 @@ const FLAG_SVG='<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3
 function marker(ll,kind,opt){
   opt=opt||{};let el,anchor='center',offset=[0,0];
   if(kind==='flag'){el=elFrom(FLAG_SVG,'mk-flag');anchor='bottom-left';offset=[-4,2]}
-  else if(kind==='art')el=elFrom(`<span><b>${opt.k}</b></span>`,'mk-art'+(opt.found?' found':'')+(opt.plan?' plan':''));
+  else if(kind==='art')el=elFrom(`<span><b>${opt.k}</b></span>`,'mk-art'+(opt.found?' found':'')+(opt.missed?' missed':'')+(opt.plan?' plan':''));
   else if(kind==='turn')el=elFrom('','mk-turn'+(opt.plan?' plan':'')+(opt.sharp?' sharp':''));
   else el=elFrom('','mk-me');
   el.style.width=kind==='art'?'34px':'';el.style.height=kind==='art'?'34px':'';
@@ -825,7 +842,7 @@ $('saveForm').onsubmit=e=>{
 $('saveDiscard').onclick=async()=>{$('saveDlg').close();if(await ask(T('discardAsk'),T('discardYes'))){drop('gps-lay');lay=null;plan=null;stopGps();keepAwake(false);clearMap();renderHome()}else $('saveDlg').showModal()};
 
 /* ---------- following ---------- */
-// state while tracking: {id,start,age,found:[],path:[[lat,lng,t,dev]],prog}
+// state while tracking: {id,start,age,found:[],missed:[],path:[[lat,lng,t,dev]],prog}
 let tr=null,geo=null,run=null,runLine=null,artMk=[],wasOff=false,lastProg=null;
 const OFF=10; // meters from the laid track that count as "off"
 function startFollow(id,resume,preview){
@@ -838,7 +855,7 @@ function startFollow(id,resume,preview){
   marker(tr.pts[0],'flag');
   if(finished){
     const r=tr.runs[tr.runs.length-1];run=null;viewRun=r;
-    artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k)}));
+    artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k),missed:(r.missed||[]).includes(k)}));
     if(r.path.length)casedLine(r.path,'#7B4FD6',true);
     shownBear=0;map.setBearing(0);
     fitTo(tr.pts.concat(r.path));setFollow(false);
@@ -870,27 +887,48 @@ function renderPreview(){
 let curLoc=null,viewRun=null;
 function drawArts(){
   artMk.forEach(m=>m.remove());
-  artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:!!(run&&run.found.includes(k)),onClick:()=>toggleFound(k)}));
+  artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:!!(run&&run.found.includes(k)),missed:!!(run&&run.missed&&run.missed.includes(k)),onClick:()=>toggleFound(k)}));
 }
 function drawRun(){
   if(!runLine){runLine=casedLine(run.path,'#7B4FD6',true);return}
   whenReady(()=>{const s=map.getSource(runLine.id);s&&s.setData({type:'Feature',geometry:{type:'LineString',coordinates:run.path.map(lnglat)}})});
 }
+// an article is open, found or not found. Tapping its marker goes open → found → not found → open.
+function setArt(k,state,how){
+  if(!run)return;run.missed=run.missed||[];run.noAuto=run.noAuto||[];
+  run.found=run.found.filter(x=>x!==k);run.missed=run.missed.filter(x=>x!==k);
+  if(state==='found'){run.found.push(k);buzz(how==='auto'?[80,60,80]:60);toast(how==='auto'?T('autoFound',k+1):resolvedAll()?T('allDone'):T('foundMsg',k+1))}
+  else if(state==='missed'){run.missed.push(k);buzz(60);toast(T('missedMsg',k+1))}
+  else{if(!run.noAuto.includes(k))run.noAuto.push(k);toast(T('unfoundMsg',k+1))} // undone by hand: never auto-mark it again
+  store('gps-run',JSON.stringify(run));drawArts();renderFollow();
+}
+const resolvedAll=()=>run.found.length+(run.missed||[]).length>=tr.arts.length;
 function toggleFound(k){
   if(!run)return;
-  const i=run.found.indexOf(k);
-  if(i>=0){run.found.splice(i,1);toast(T('unfoundMsg',k+1))}else{run.found.push(k);buzz(60);toast(run.found.length===tr.arts.length?T('allFound'):T('foundMsg',k+1))}
-  store('gps-run',JSON.stringify(run));drawArts();renderFollow();
+  setArt(k,run.found.includes(k)?'missed':(run.missed||[]).includes(k)?'open':'found');
+}
+// standing still for 10 seconds near an open article (the dog is down on it) marks it found
+const STILL_MS=10000,STILL_M=5;
+let still=null;
+function checkStill(){
+  if(!run||!lastPos||lastAcc>GOOD_ACC){still=null;return}
+  if(!still||hav(still.at,lastPos)>STILL_M){still={at:lastPos.slice(),t:Date.now()};return}
+  if(Date.now()-still.t<STILL_MS)return;
+  const reach=Math.max(8,cfg.lead+6),noAuto=run.noAuto||[],missed=run.missed||[];
+  const near=tr.arts.map((a,k)=>({k,d:hav(a.ll,lastPos)})).filter(x=>x.d<=reach&&!run.found.includes(x.k)&&!missed.includes(x.k)&&!noAuto.includes(x.k)).sort((a,b)=>a.d-b.d)[0];
+  if(near){setArt(near.k,'found','auto');still.t=Date.now()}
 }
 function renderFollow(){
   if(mode==='preview')return renderPreview();
   if(mode!=='follow')return;
+  checkStill();
   const age=run?run.age:Date.now()-tr.start,n=tr.arts.length,f=run?run.found.length:0;
   const d=curLoc?Math.round(curLoc.d):null;
   setStats([[T('sAge'),fmtT(age)],[T('sRun'),run?fmtT(Date.now()-run.start):'–'],[T('sOff'),d!=null?T('m',d):'–',d==null?'':d>OFF?'bad':'ok'],[T('sFound'),`${f}/${n}`]]);
   const mb=$('mainBtn'),sb=$('sideBtn');
   mb.textContent=run?T('stopRun'):T('startRun');mb.className=run?'btn warn':'btn';mb.disabled=false;
-  sb.textContent=T('artFound');sb.disabled=!run||f===n;
+  sb.textContent=T('artFound');sb.disabled=!run||resolvedAll();
+  const xb=$('missBtn');xb.hidden=!run;xb.textContent=T('artMissed');xb.disabled=!run||resolvedAll();$('screen').querySelector('.bottom').classList.toggle('three',!!run);
   $('hintLine').textContent=run?T('runHint'):T('runReady');
   // banner: off-track warning first, then a close article, then the next turn
   if(!lastPos){banner(T('waitGps'));return}
@@ -898,14 +936,14 @@ function renderFollow(){
   if(!run||!curLoc){banner('');return}
   if(curLoc.d>OFF){banner(T('offBy',Math.round(curLoc.d)),'bad');return}
   const prog=(lastProg||0)+cfg.lead; // where the dog is, about this far ahead of the handler
-  const near=tr.arts.map((a,k)=>({k,ahead:a.cum-prog})).filter(x=>!run.found.includes(x.k)&&x.ahead>-8&&x.ahead<15).sort((a,b)=>a.ahead-b.ahead)[0];
+  const near=tr.arts.map((a,k)=>({k,ahead:a.cum-prog})).filter(x=>!run.found.includes(x.k)&&!(run.missed||[]).includes(x.k)&&x.ahead>-8&&x.ahead<15).sort((a,b)=>a.ahead-b.ahead)[0];
   if(near){banner(T('nearArt',near.k+1).replace('{m}',Math.max(0,Math.round(near.ahead))),'ok');return}
   const nt=geo.turns.find(t=>t.cum>prog+3);
   banner(nt?T('nextTurn',T(nt.dir),Math.round(nt.cum-prog)):T('endIn',Math.max(0,Math.round(geo.len-prog))),'ok');
 }
 async function followMain(){
   if(!run){
-    run={id:tr.id,start:Date.now(),age:Date.now()-tr.start,found:[],path:[],prog:0};lastProg=0;
+    run={id:tr.id,start:Date.now(),age:Date.now()-tr.start,found:[],missed:[],noAuto:[],path:[],prog:0};still=null;lastProg=0;
     if(lastPos)run.path.push([lastPos[0],lastPos[1],Date.now(),curLoc?Math.round(curLoc.d):0]);
     store('gps-run',JSON.stringify(run));setFollow(true);buzz(80);if(cfg.alert==='voice')primeVoice();drawArts();renderFollow();return;
   }
@@ -913,16 +951,31 @@ async function followMain(){
   run.end=Date.now();
   const devs=run.path.map(p=>p[3]),maxDev=devs.length?Math.max(...devs):0,onPct=devs.length?Math.round(100*devs.filter(x=>x<=OFF).length/devs.length):0;
   const prog=Math.min(100,Math.round(100*(run.prog||0)/geo.len));
-  const rec={start:run.start,end:run.end,age:run.age,found:run.found.slice(),path:run.path,maxDev,onPct,prog};
+  const rec={start:run.start,end:run.end,age:run.age,found:run.found.slice(),missed:(run.missed||[]).slice(),path:run.path,maxDev,onPct,prog};
   const all=tracks(),t=all.find(x=>x.id===tr.id);if(t){t.runs=t.runs||[];t.runs.push(rec);saveTracks(all)}
-  drop('gps-run');run=null;speechStop();
+  drop('gps-run');run=null;speechStop();$('missBtn').hidden=true;$('screen').querySelector('.bottom').classList.remove('three');
   // the track is done: reopen it read-only, then show the summary
   stopGps();startFollow(tr.id);showSummary(rec);
 }
 function showSummary(rec){
-  const rows=[[T('sumAge'),fmtT(rec.age)],[T('sumTime'),fmtT(rec.end-rec.start)],[T('sumFound'),T('sumOf',rec.found.length,tr.arts.length)],[T('sumMax'),T('m',rec.maxDev)],[T('sumOn'),rec.onPct+'%'],[T('sumProg'),rec.prog+'%']];
+  rec.missed=rec.missed||[];
+  const rows=[[T('sumAge'),fmtT(rec.age)],[T('sumTime'),fmtT(rec.end-rec.start)],[T('sumFound'),T('sumOf',rec.found.length,tr.arts.length)],...(rec.missed.length?[[T('sumMissed'),rec.missed.length]]:[]),[T('sumMax'),T('m',rec.maxDev)],[T('sumOn'),rec.onPct+'%'],[T('sumProg'),rec.prog+'%']];
   $('sumList').innerHTML='';rows.forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;$('sumList').append(dt,dd)});
-  $('sumDlg').showModal();
+  // set each article found or not found, also the ones the dog skipped or never indicated
+  const box=$('artRes');box.innerHTML='';
+  tr.arts.forEach((a,k)=>{
+    const st=rec.found.includes(k)?'f':rec.missed.includes(k)?'m':'';
+    const lbl=document.createElement('b');lbl.textContent=T('artN',k+1);box.append(lbl);
+    [['f',T('resFound')],['m',T('resMissed')]].forEach(([c,txt])=>{const b=document.createElement('button');b.type='button';b.className=c+(st===c?' on':'');b.textContent=txt;
+      b.onclick=()=>{rec.found=rec.found.filter(x=>x!==k);rec.missed=rec.missed.filter(x=>x!==k);if(st!==c)(c==='f'?rec.found:rec.missed).push(k);saveRun(rec);showSummary(rec)};box.append(b)});
+  });
+  if(!$('sumDlg').open)$('sumDlg').showModal();
+}
+// write the edited result back into the saved track and redraw the finished view
+function saveRun(rec){
+  const all=tracks(),t=all.find(x=>x.id===tr.id);if(!t||!t.runs)return;
+  const r=t.runs.find(x=>x.start===rec.start);if(!r)return;r.found=rec.found.slice();r.missed=rec.missed.slice();saveTracks(all);
+  tr=t;if(mode==='view'){viewRun=r;artMk.forEach(m=>m.remove());artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k),missed:r.missed.includes(k)}));renderView()}
 }
 function renderView(){
   const r=viewRun;
@@ -934,9 +987,14 @@ function renderView(){
 // "article found" marks the closest unfound article along the track (or the next one in order)
 function followSide(){
   if(!run)return;
-  const prog=(lastProg||0)+cfg.lead,left=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-prog)})).filter(x=>!run.found.includes(x.k)).sort((a,b)=>a.d-b.d);
-  if(left.length)toggleFound(left[0].k);
+  const prog=(lastProg||0)+cfg.lead,left=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-prog)})).filter(x=>!run.found.includes(x.k)&&!(run.missed||[]).includes(x.k)).sort((a,b)=>a.d-b.d);
+  if(left.length)setArt(left[0].k,'found');
 }
+$('missBtn').onclick=()=>{
+  if(!run)return;
+  const prog=(lastProg||0)+cfg.lead,left=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-prog)})).filter(x=>!run.found.includes(x.k)&&!(run.missed||[]).includes(x.k)).sort((a,b)=>a.d-b.d);
+  if(left.length)setArt(left[0].k,'missed');
+};
 $('sumClose').onclick=()=>$('sumDlg').close();
 $('mainBtn').onclick=()=>{if(mode==='lay')layMain();else if(mode==='view')showSummary(viewRun);else if(mode==='preview'){startCompass();stopGps();startFollow(tr.id)}else followMain()};
 $('sideBtn').onclick=()=>{if(mode==='lay')layMark();else if(mode==='view'||mode==='preview')shareTrack(tr);else followSide()};
@@ -979,7 +1037,7 @@ function checkAlerts(){
   geo.turns.forEach((t,i)=>{const ahead=t.cum-eff;
     if(!run.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.t.push(i);alertNow(cfg.alert,T('sayTurn',T(t.dir),Math.max(0,Math.round(ahead))),'turn')}});
   tr.arts.forEach((a,k)=>{const ahead=a.cum-eff;
-    if(!run.found.includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead))),'art')}});
+    if(!run.found.includes(k)&&!(run.missed||[]).includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead))),'art')}});
 }
 
 /* ---------- map follows the phone's heading ---------- */
