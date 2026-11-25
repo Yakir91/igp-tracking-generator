@@ -240,6 +240,7 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
       </div>
       <label for="sLead"><span data-i18n="setLead"></span><select id="sLead"></select></label>
       <p class="small" data-i18n="leadNote"></p>
+      <label for="sLine"><span data-i18n="setLine"></span><select id="sLine"><option value="thin" data-i18n="lineThin"></option><option value="medium" data-i18n="lineMed"></option><option value="thick" data-i18n="lineThick"></option></select></label>
       <label class="chk" for="sRotate"><input type="checkbox" id="sRotate"><span data-i18n="setRotate"></span></label>
     </div>
     <div class="dacts">
@@ -319,7 +320,7 @@ he:{
   settings:'הגדרות',setTitle:'התראות ומפה',setAlert:'התראה לפני פנייה או חפץ',alNone:'ללא',alVib:'רטט',alVoice:'קולית',
   setAlertDist:'כמה לפני',setLead:'הכלב הולך לפניי בערך',lead0:'0 (לפי הטלפון)',
   leadNote:'הכלב בדרך כלל מקדים את המוביל. ההתראות והמרחקים לפנייה ולחפץ יחושבו לפי הנקודה שנמצאת המרחק הזה לפניך לאורך המסלול.',
-  setRotate:'סובב את המפה לפי כיוון הטלפון',setTest:'נסה התראה',
+  setRotate:'סובב את המפה לפי כיוון הטלפון',setLine:'עובי הקו במפה',lineThin:'דק',lineMed:'בינוני',lineThick:'עבה',setTest:'נסה התראה',
   sayTurn:(d,m)=>`פנייה ${d} בעוד ${m} מטר`,sayArt:(k,m)=>`חפץ ${k} בעוד ${m} מטר`,
   rotOn:'לפי הטלפון',rotFree:'סיבוב ידני',rotFreeHint:'סובבת את המפה ביד. כדי לחזור לכיוון הטלפון, לחץ על "סיבוב ידני".',rotOff:'צפון למעלה',noCompass:'הטלפון לא מדווח על כיוון. המפה תסתובב לפי כיוון ההליכה כשאתה זז.',
   share:'שתף',shareText:n=>`מסלול גישוש: ${n}`,linkCopied:'הקישור הועתק',copyLink:'העתק קישור',linkTitle:'קישור למסלול',
@@ -384,7 +385,7 @@ en:{
   settings:'Settings',setTitle:'Alerts and map',setAlert:'Alert before a turn or article',alNone:'None',alVib:'Vibration',alVoice:'Voice',
   setAlertDist:'How far before',setLead:'The dog walks ahead of me by about',lead0:'0 (use the phone)',
   leadNote:'The dog is usually ahead of the handler. Alerts and distances to turns and articles use the point this far ahead of you along the track.',
-  setRotate:'Rotate the map with the phone',setTest:'Test alert',
+  setRotate:'Rotate the map with the phone',setLine:'Line thickness on the map',lineThin:'Thin',lineMed:'Medium',lineThick:'Thick',setTest:'Test alert',
   sayTurn:(d,m)=>`Turn ${d} in ${m} meters`,sayArt:(k,m)=>`Article ${k} in ${m} meters`,
   rotOn:'Phone heading',rotFree:'Turned by hand',rotFreeHint:'You turned the map by hand. To follow the phone again, tap "Turned by hand".',rotOff:'North up',noCompass:'This phone does not report a heading. The map turns with your walking direction once you move.',
   share:'Share',shareText:n=>`Tracking track: ${n}`,linkCopied:'Link copied',copyLink:'Copy link',linkTitle:'Track link',
@@ -449,7 +450,7 @@ de:{
   settings:'Einstellungen',setTitle:'Hinweise und Karte',setAlert:'Hinweis vor Winkel oder Gegenstand',alNone:'Keiner',alVib:'Vibration',alVoice:'Sprache',
   setAlertDist:'Wie weit vorher',setLead:'Der Hund ist mir voraus um etwa',lead0:'0 (Handy-Position)',
   leadNote:'Der Hund ist meist vor dem Hundeführer. Hinweise und Abstände zu Winkeln und Gegenständen gelten für den Punkt, der so weit vor dir auf der Fährte liegt.',
-  setRotate:'Karte mit dem Handy drehen',setTest:'Hinweis testen',
+  setRotate:'Karte mit dem Handy drehen',setLine:'Linienstärke auf der Karte',lineThin:'Dünn',lineMed:'Mittel',lineThick:'Dick',setTest:'Hinweis testen',
   sayTurn:(d,m)=>`Winkel nach ${d} in ${m} Metern`,sayArt:(k,m)=>`Gegenstand ${k} in ${m} Metern`,
   rotOn:'Handy-Richtung',rotFree:'Von Hand gedreht',rotFreeHint:'Du hast die Karte von Hand gedreht. Um wieder der Handy-Richtung zu folgen, tippe auf „Von Hand gedreht“.',rotOff:'Norden oben',noCompass:'Das Handy meldet keine Richtung. Die Karte dreht sich mit deiner Gehrichtung, sobald du dich bewegst.',
   share:'Teilen',shareText:n=>`Fährte: ${n}`,linkCopied:'Link kopiert',copyLink:'Link kopieren',linkTitle:'Link zur Fährte',
@@ -663,13 +664,17 @@ function marker(ll,kind,opt){
   if(kind==='me')el.style.zIndex=5; // your position stays above articles and the flag
   if(kind!=='me')drawn.push(m);return m;
 }
+// line thickness from the settings: [line, white edge] in pixels
+const LINE_W={thin:[2,4],medium:[3,6],thick:[4,8]};
+const lineW=()=>LINE_W[cfg.line]||LINE_W.thick;
+function restyleLines(){const [w,c]=lineW();drawn.forEach(o=>{if(o.id&&map.getLayer(o.id)){map.setPaintProperty(o.id,'line-width',w);map.setPaintProperty(o.id+'c','line-width',c)}})}
 function casedLine(pts,color,dashed){
   const id='l'+(++uid),data={type:'Feature',geometry:{type:'LineString',coordinates:pts.map(lnglat)}};
   const obj={id,remove(){if(!map.getSource(id))return;map.removeLayer(id+'c');map.removeLayer(id);map.removeSource(id)}};
   whenReady(()=>{
     map.addSource(id,{type:'geojson',data});
-    map.addLayer({id:id+'c',type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#fff','line-width':8,'line-opacity':0.85}});
-    map.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':dashed?'butt':'round'},paint:Object.assign({'line-color':color,'line-width':4},dashed?{'line-dasharray':[2,2]}:{})});
+    map.addLayer({id:id+'c',type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#fff','line-width':lineW()[1],'line-opacity':0.85}});
+    map.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':dashed?'butt':'round'},paint:Object.assign({'line-color':color,'line-width':lineW()[0]},dashed?{'line-dasharray':[2,2]}:{})});
   });
   drawn.push(obj);return obj;
 }
@@ -1047,19 +1052,19 @@ $('mainBtn').onclick=()=>{if(mode==='lay')layMain();else if(mode==='view')showSu
 $('sideBtn').onclick=()=>{if(mode==='lay')layMark();else if(mode==='view'||mode==='preview')shareTrack(tr);else followSide()};
 
 /* ---------- settings ---------- */
-const DEF={alert:'vibrate',alertDist:10,lead:0,rotate:true};
+const DEF={alert:'vibrate',alertDist:10,lead:0,rotate:true,line:'thick'};
 let cfg=(()=>{try{return Object.assign({},DEF,JSON.parse(load('gps-settings')||'{}'))}catch(e){return Object.assign({},DEF)}})();
 function fillSettings(){
   const dist=$('sAlertDist'),lead=$('sLead');
   dist.innerHTML=[5,10,15,20,30].map(v=>`<option value="${v}">${T('m',v)}</option>`).join('');
   lead.innerHTML=[0,5,10].map(v=>`<option value="${v}">${v?T('m',v):T('lead0')}</option>`).join('');
-  $('sAlert').value=cfg.alert;dist.value=cfg.alertDist;lead.value=cfg.lead;$('sRotate').checked=cfg.rotate;
+  $('sAlert').value=cfg.alert;dist.value=cfg.alertDist;lead.value=cfg.lead;$('sRotate').checked=cfg.rotate;$('sLine').value=cfg.line;
 }
 function openSettings(){fillSettings();$('setDlg').showModal()}
 $('setBtnHome').onclick=openSettings;$('setBtn').onclick=openSettings;
 $('setForm').onsubmit=e=>{
   e.preventDefault();
-  cfg={alert:$('sAlert').value,alertDist:+$('sAlertDist').value,lead:+$('sLead').value,rotate:$('sRotate').checked};
+  cfg={alert:$('sAlert').value,alertDist:+$('sAlertDist').value,lead:+$('sLead').value,rotate:$('sRotate').checked,line:$('sLine').value};restyleLines();
   store('gps-settings',JSON.stringify(cfg));$('setDlg').close();
   if(cfg.alert==='voice')primeVoice();if(cfg.rotate)startCompass();
   if(mode)refreshScreen();applyBearing(true);
