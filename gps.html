@@ -672,6 +672,7 @@ function ensureMap(){
   // the compass button turns the map back to north and keeps it there
   map.getContainer().addEventListener('click',e=>{if(!e.target.closest('.maplibregl-ctrl-compass'))return;freeRot=false;cfg.rotate=false;store('gps-settings',JSON.stringify(cfg));shownBear=0;syncRotBtn()},true);
   map.on('load',()=>{mapReady=true;readyQ.splice(0).forEach(f=>f())});
+  map.on('moveend',checkSatZoom);
   // a one-finger drag means "let me look around": stop following. Two fingers (pinch) keep following.
   map.on('dragstart',e=>{const t=e.originalEvent&&e.originalEvent.touches;if(t&&t.length>1)return;setFollow(false)});
   // Any camera move cancels a gesture in progress, so while a finger is on the map the map holds still.
@@ -681,6 +682,33 @@ function ensureMap(){
 }
 function setFollow(v){follow=v;$('followBtn').setAttribute('aria-pressed',String(v))}
 $('followBtn').onclick=()=>setFollow(!follow);
+/* Esri has no close-up photos in some areas and sends a grey "Map data not yet available" picture instead.
+   Ask Esri which is the closest zoom it really has around here, and stop the satellite layer there:
+   beyond it the map keeps enlarging the last real photo instead of showing the grey picture. */
+const SAT_URL='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
+let satMax=19;const satSeen={};
+function tileXY(lng,lat,z){const n=2**z,r=lat*Math.PI/180;return[Math.floor((lng+180)/360*n),Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)]}
+async function hasTile(z,lng,lat){
+  const [x,y]=tileXY(lng,lat,z);
+  const r=await fetch(`${SAT_URL}/tilemap/${z}/${y}/${x}/1/1`);if(!r.ok)throw 0;
+  const j=await r.json();return !!(j&&j.data&&j.data[0]);
+}
+async function checkSatZoom(){
+  if(!map||map.getZoom()<15)return;
+  const c=map.getCenter(),key=tileXY(c.lng,c.lat,14).join('/');
+  if(!(key in satSeen)){
+    satSeen[key]=null;let best=16;
+    try{for(const z of [19,18,17]){if(await hasTile(z,c.lng,c.lat)){best=z;break}}}catch(e){best=17} // no answer from Esri: a safe limit
+    satSeen[key]=best;
+  }
+  const want=satSeen[key];if(want==null||want===satMax)return;
+  satMax=want;
+  // a raster source's zoom limit is fixed, so the satellite layer is rebuilt with the new limit, under everything else
+  const vis=map.getLayoutProperty('sat','visibility')||'visible',below=map.getStyle().layers[1].id;
+  map.removeLayer('sat');map.removeSource('sat');
+  map.addSource('sat',{type:'raster',tiles:[SAT_URL+'/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:satMax,attribution:'Imagery © Esri'});
+  map.addLayer({id:'sat',type:'raster',source:'sat',layout:{visibility:vis}},below);
+}
 $('layerBtn').onclick=()=>{sat=!sat;whenReady(()=>{map.setLayoutProperty('sat','visibility',sat?'visible':'none');map.setLayoutProperty('osm','visibility',sat?'none':'visible')});$('layerBtn').textContent=sat?T('layerMap'):T('layerSat')};
 function elFrom(html,cls){const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;return d}
 const FLAG_SVG='<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M4 33V3" stroke="#222" stroke-width="2.5" stroke-linecap="round"/><path d="M5 3h20l-5 6 5 6H5z" fill="#E4572E" stroke="#fff" stroke-width="1.5"/></svg>';
