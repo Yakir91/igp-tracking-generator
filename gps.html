@@ -86,7 +86,8 @@ dialog textarea{font:17px var(--f-body);padding:10px 12px;border:1px solid var(-
 .mapbtns button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--line)}
 .bottom .btn{padding:15px 10px;font-size:18px}
-.bottom.three{grid-template-columns:1.1fr 1fr 1fr}.bottom.three .btn{font-size:16px;padding-inline:6px}
+.bottom.three{grid-template-columns:1.25fr 1fr 1fr}.bottom.three .btn{font-size:16px;padding-inline:6px}
+.btn.food{background:transparent;color:#1E7F86;border:1.5px solid #1E7F86}
 .btn.miss{background:transparent;color:var(--bad);border:1.5px solid var(--bad)}
 .artres{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-top:14px}
 .artres b{font-family:var(--f-mono);padding-inline-end:4px}
@@ -110,6 +111,9 @@ dialog textarea{font:17px var(--f-body);padding:10px 12px;border:1px solid var(-
 .mk-art.plan b{color:#7A5208}
 .mk-turn.plan{border-color:#C99A06;background:#FFF6CF}
 .mk-turn.sharp{width:16px;height:16px;border-color:#C99A06;background:#C99A06}
+.mk-food{width:24px;height:24px;border-radius:50%;background:#1E7F86;border:2px solid #fff;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mk-food svg{width:14px;height:14px;display:block}
+.mk-lbl{background:rgba(255,246,207,.95);color:#5A3D05;border:1.5px solid #C99A06;border-radius:8px;padding:1px 6px;font:700 12px var(--f-mono);white-space:nowrap;pointer-events:none}
 .mk-turn{width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid #2F5D3A}
 .mk-me{width:18px;height:18px;border-radius:50%;background:#1F6FEB;border:3px solid #fff;box-shadow:0 0 0 2px rgba(31,111,235,.35),0 1px 5px rgba(0,0,0,.4)}
 
@@ -123,6 +127,8 @@ dialog select{font:17px var(--f-body);padding:9px 10px;border:1px solid var(--li
 .setgrid .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
 dialog label.chk{flex-direction:row;align-items:center;gap:10px;font-weight:600}
 dialog label.chk input{width:22px;height:22px}
+.chkrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:10px 0 4px;font-weight:600}
+.chkrow>span{flex-basis:100%}
 .small{font-size:14px;color:var(--muted);margin:0}
 dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 .dacts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
@@ -190,6 +196,7 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
       <button class="btn" id="mainBtn"></button>
       <button class="btn ghost" id="sideBtn"></button>
       <button class="btn miss" id="missBtn" hidden></button>
+      <button class="btn food" id="foodBtn" hidden></button>
     </div>
   </div>
 </section>
@@ -238,6 +245,12 @@ dialog input{font:17px var(--f-body);padding:10px 12px;border:1px solid var(--li
           <select id="sAlert"><option value="none" data-i18n="alNone"></option><option value="vibrate" data-i18n="alVib"></option><option value="voice" data-i18n="alVoice"></option></select></label>
         <label for="sAlertDist"><span data-i18n="setAlertDist"></span><select id="sAlertDist"></select></label>
       </div>
+      <div class="chkrow"><span data-i18n="setAlertOn"></span>
+        <label class="chk" for="sAlT"><input type="checkbox" id="sAlT"><span data-i18n="alTurns"></span></label>
+        <label class="chk" for="sAlA"><input type="checkbox" id="sAlA"><span data-i18n="alArts"></span></label>
+        <label class="chk" for="sAlF"><input type="checkbox" id="sAlF"><span data-i18n="alFood"></span></label>
+      </div>
+      <label class="chk" for="sAuto"><input type="checkbox" id="sAuto"><span data-i18n="setAuto"></span></label>
       <label for="sLead"><span data-i18n="setLead"></span><select id="sLead"></select></label>
       <p class="small" data-i18n="leadNote"></p>
       <label for="sLine"><span data-i18n="setLine"></span><select id="sLine"><option value="thin" data-i18n="lineThin"></option><option value="medium" data-i18n="lineMed"></option><option value="thick" data-i18n="lineThick"></option></select></label>
@@ -294,6 +307,11 @@ he:{
   sAge:'גיל המסלול',sRun:'זמן גישוש',sOff:'מהמסלול',sFound:'נמצאו',
   addNote:k=>`📝 הערה לחפץ ${k}`,noteTitle:k=>`הערה לחפץ ${k}`,noteLabel:'מה כדאי לדעת כשמגיעים לחפץ? (יוצג למגשש כשהכלב קרוב)',noteSaved:k=>`ההערה לחפץ ${k} נשמרה`,
   quickNotes:['בעשב גבוה','ליד שיח','על שביל','ליד עמוד','בשקע','במעבר בין שטחים'],
+  legSteps:s=>`${s} צ'`,ofSteps:s=>`מתוך ${s}`,
+  markFood:'תחנת מזון',foodMarked:k=>`תחנת מזון ${k} סומנה`,foodDelAsk:'למחוק את תחנת המזון?',foodDelYes:'מחק',foodStation:'תחנת מזון',
+  nearFood:m=>`תחנת מזון לפניך, כ-${m} מ'`,sayFood:m=>`תחנת מזון בעוד ${m} מטר`,
+  setAlertOn:'התראה על:',alTurns:'פניות',alArts:'חפצים',alFood:'תחנות מזון',
+  setAuto:'סמן חפץ כנמצא כשעומדים לידו 10 שניות',
   startRun:'התחל גישוש',stopRun:'סיים גישוש',artFound:'חפץ נמצא',artMissed:'לא נמצא',
   autoFound:k=>`חפץ ${k} סומן כנמצא (עמדת 10 שניות לידו). לחיצה על החפץ במפה משנה.`,missedMsg:k=>`חפץ ${k} סומן כלא נמצא`,allDone:'כל החפצים סומנו',
   artN:k=>`חפץ ${k}`,resFound:'נמצא',resMissed:'לא נמצא',sumMissed:'חפצים שלא נמצאו',
@@ -359,6 +377,11 @@ en:{
   sAge:'Track age',sRun:'Tracking time',sOff:'Off track',sFound:'Found',
   addNote:k=>`📝 Note for article ${k}`,noteTitle:k=>`Note for article ${k}`,noteLabel:'What should the handler know at this article? (shown when the dog gets close)',noteSaved:k=>`Note for article ${k} saved`,
   quickNotes:['In tall grass','By a bush','On a path','By a pole','In a dip','At a cover change'],
+  legSteps:s=>`${s} st`,ofSteps:s=>`of ${s}`,
+  markFood:'Food station',foodMarked:k=>`Food station ${k} marked`,foodDelAsk:'Delete this food station?',foodDelYes:'Delete',foodStation:'Food station',
+  nearFood:m=>`Food station ahead, about ${m} m`,sayFood:m=>`Food station in ${m} meters`,
+  setAlertOn:'Alert for:',alTurns:'Turns',alArts:'Articles',alFood:'Food stations',
+  setAuto:'Mark an article found after standing by it for 10 seconds',
   startRun:'Start tracking',stopRun:'Finish tracking',artFound:'Article found',artMissed:'Not found',
   autoFound:k=>`Article ${k} marked found (you stood by it for 10 seconds). Tap it on the map to change.`,missedMsg:k=>`Article ${k} marked not found`,allDone:'All articles marked',
   artN:k=>`Article ${k}`,resFound:'Found',resMissed:'Not found',sumMissed:'Articles not found',
@@ -424,6 +447,11 @@ de:{
   sAge:'Liegezeit',sRun:'Ausarbeitung',sOff:'Abstand',sFound:'Gefunden',
   addNote:k=>`📝 Notiz zu Gegenstand ${k}`,noteTitle:k=>`Notiz zu Gegenstand ${k}`,noteLabel:'Was sollte der Hundeführer hier wissen? (wird angezeigt, wenn der Hund nahe ist)',noteSaved:k=>`Notiz zu Gegenstand ${k} gespeichert`,
   quickNotes:['Im hohen Gras','Am Busch','Auf einem Weg','Am Pfosten','In einer Senke','Am Bewuchswechsel'],
+  legSteps:s=>`${s} Schr.`,ofSteps:s=>`von ${s}`,
+  markFood:'Futterstelle',foodMarked:k=>`Futterstelle ${k} markiert`,foodDelAsk:'Diese Futterstelle löschen?',foodDelYes:'Löschen',foodStation:'Futterstelle',
+  nearFood:m=>`Futterstelle voraus, ca. ${m} m`,sayFood:m=>`Futterstelle in ${m} Metern`,
+  setAlertOn:'Hinweis bei:',alTurns:'Winkeln',alArts:'Gegenständen',alFood:'Futterstellen',
+  setAuto:'Gegenstand als gefunden markieren, wenn man 10 Sekunden daneben steht',
   startRun:'Ausarbeiten starten',stopRun:'Ausarbeiten beenden',artFound:'Gefunden',artMissed:'Nicht gefunden',
   autoFound:k=>`Gegenstand ${k} als gefunden markiert (10 Sekunden daneben gestanden). Zum Ändern auf der Karte antippen.`,missedMsg:k=>`Gegenstand ${k} als nicht gefunden markiert`,allDone:'Alle Gegenstände markiert',
   artN:k=>`Gegenstand ${k}`,resFound:'Gefunden',resMissed:'Nicht gefunden',sumMissed:'Nicht gefunden',
@@ -534,15 +562,19 @@ function onLeg(p,l,off){
 }
 // the plan in steps, flag at 0,0: line points, corners (with direction), article spots
 function planShape(pl){
-  let p=[0,0],st=0;const pts=[[0,0]],corners=[],arts=[];
+  let p=[0,0],st=0;const pts=[[0,0]],corners=[],arts=[],legs=[];
   pl.legs.forEach((l,i)=>{
     const n=l.arc?24:1;for(let k=1;k<=n;k++)pts.push(onLeg(p,l,l.L*k/n));
     pl.objs.forEach((c,j)=>{if(c>st&&c<=st+l.L||(c===0&&i===0))arts[j]=onLeg(p,l,c-st)});
     const end=onLeg(p,l,l.L);
+    // the step count label goes where it is farthest from any article on this leg
+    const onThis=pl.objs.filter(c=>c>st&&c<=st+l.L).map(c=>(c-st)/l.L);
+    const f=[.5,.3,.7,.2,.8].map(f=>({f,gap:Math.min(1,...onThis.map(a=>Math.abs(a-f)))})).sort((a,b)=>(b.gap>=.15)-(a.gap>=.15)||0)[0].f;
+    legs.push({mid:onLeg(p,l,l.L*f),L:l.L});
     if(i<pl.legs.length-1){const t=n8(pl.legs[i+1].h-outH(l));corners.push({at:pts.length-1,dir:t>0?'right':'left',sharp:Math.abs(t)===3})}
     p=end;st+=l.L;
   });
-  return{pts,corners,arts,total:st};
+  return{pts,corners,arts,legs,total:st};
 }
 // steps around the flag -> real coordinates, with "up" turned to the compass heading
 function planToWorld(anchor,headingDeg){
@@ -556,6 +588,7 @@ function planGeo(pl,anchor,headingDeg){
   const g={P,xy,cum,ll,len:cum[cum.length-1],total:sh.total};
   g.turns=sh.corners.map(c=>({cum:cum[c.at],dir:c.dir,sharp:c.sharp,ll:ll[c.at]}));
   g.arts=sh.arts.map((q,k)=>{const a=W(q);return{ll:a,cum:locate(g,a,null).cum,k}});
+  g.legs=sh.legs.map(l=>({ll:W(l.mid),L:l.L}));
   g.cross=(pl.cross||[]).map(c=>{const o=[];for(let i=0;i+1<c.length;i+=2)o.push(W([c[i],c[i+1]]));return o});
   return g;
 }
@@ -652,11 +685,15 @@ $('layerBtn').onclick=()=>{sat=!sat;whenReady(()=>{map.setLayoutProperty('sat','
 function elFrom(html,cls){const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;return d}
 const FLAG_SVG='<svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 33V3" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M4 33V3" stroke="#222" stroke-width="2.5" stroke-linecap="round"/><path d="M5 3h20l-5 6 5 6H5z" fill="#E4572E" stroke="#fff" stroke-width="1.5"/></svg>';
 // every marker and line drawn for a track goes into `drawn`, so leaving the screen clears them all
+// a food bowl, so a food station never looks like an article
+const FOOD_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 11h20a10 7 0 0 1-20 0z" fill="#fff"/><circle cx="8" cy="8" r="2" fill="#fff"/><circle cx="12.5" cy="6.5" r="2" fill="#fff"/><circle cx="16.5" cy="8.5" r="2" fill="#fff"/></svg>';
 function marker(ll,kind,opt){
   opt=opt||{};let el,anchor='center',offset=[0,0];
   if(kind==='flag'){el=elFrom(FLAG_SVG,'mk-flag');anchor='bottom-left';offset=[-4,2]}
   else if(kind==='art')el=elFrom(`<span><b>${opt.k}</b></span>`,'mk-art'+(opt.found?' found':'')+(opt.missed?' missed':'')+(opt.note?' hasnote':'')+(opt.plan?' plan':''));
   else if(kind==='turn')el=elFrom('','mk-turn'+(opt.plan?' plan':'')+(opt.sharp?' sharp':''));
+  else if(kind==='food')el=elFrom(FOOD_SVG,'mk-food');
+  else if(kind==='lbl')el=elFrom(opt.text,'mk-lbl');
   else el=elFrom('','mk-me');
   el.style.width=kind==='art'?'34px':'';el.style.height=kind==='art'?'34px':'';
   if(opt.onClick){el.style.cursor='pointer';el.addEventListener('click',e=>{e.stopPropagation();opt.onClick()})}
@@ -743,7 +780,7 @@ function banner(text,kind,note){const b=$('banner');b.hidden=!text;b.textContent
   if(text&&note){const n=document.createElement('span');n.className='note';n.textContent='📝 '+note;b.append(n)}}
 function setStats(items){$('stats').innerHTML=items.map(([k,v,c,sub])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}${sub!=null?`<small>${sub}</small>`:''}</div></div>`).join('')}
 function openScreen(title){
-  $('noteChip').hidden=true;
+  $('noteChip').hidden=true;$('foodBtn').hidden=true;$('missBtn').hidden=true;$('screen').querySelector('.bottom').classList.remove('three');
   freeRot=false;
   $('home').hidden=true;$('screen').hidden=false;$('sTitle').textContent=title;
   ensureMap();clearInterval(tick);
@@ -756,10 +793,10 @@ function refreshScreen(){syncRotBtn();if(mode==='lay')renderLay();else if(mode==
 
 /* ---------- laying ---------- */
 // state while laying: {start,pts,arts}; saved after every change so a reload can continue
-let lay=null,layLine=null,layArtMk=[],layFlag=null,plan=null,planDrawn=[],planG=null,planKey='',planProg=null;
+let lay=null,layLine=null,layArtMk=[],layFoodMk=[],layFlag=null,plan=null,planDrawn=[],planG=null,planKey='',planProg=null;
 function startLay(draft,newPlan){
   mode='lay';setTimeout(syncRotBtn,0);lay=draft;plan=lay&&lay.plan?lay.plan:(newPlan||null);planG=null;planKey='';planDrawn=[];planProg=null;planFix.loc=null;
-  openScreen(plan?plan.name:T('layTitle'));clearMap();layLine=null;layArtMk=[];layFlag=null;startCompass();
+  openScreen(plan?plan.name:T('layTitle'));clearMap();layLine=null;layArtMk=[];layFoodMk=[];layFlag=null;startCompass();
   if(lay)drawLay();
   startGps((p,acc,t)=>{
     if(lay&&acc<=GOOD_ACC){const last=lay.pts[lay.pts.length-1];if(!last||hav(last,p)>=2){lay.pts.push([p[0],p[1],t]);store('gps-lay',JSON.stringify(lay));drawLay()}}
@@ -774,6 +811,7 @@ function drawLay(){
   if(!layLine)layLine=casedLine(lay.pts,'#2F9E55');
   else whenReady(()=>{const s=map.getSource(layLine.id);s&&s.setData(data)});
   if(!layFlag&&lay.pts.length)layFlag=marker(lay.pts[0],'flag');
+  layFoodMk.forEach(m=>m.remove());layFoodMk=(lay.food||[]).map((f,i)=>marker(f.ll,'food',{onClick:()=>dropFood(i)}));
   layArtMk.forEach(m=>m.remove());layArtMk=lay.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,note:a.note,onClick:()=>editNote(k)}));
 }
 // Draw the plan. Before the start it follows you and the phone's heading, so you can see where it will go;
@@ -791,6 +829,7 @@ function drawPlan(){
   planG.cross.forEach(c=>planDrawn.push(casedLine(c,'#7B4FD6',true)));
   planDrawn.push(casedLine(planG.ll,'#E8B500',true));
   planG.turns.forEach(t=>planDrawn.push(marker(t.ll,'turn',{plan:true,sharp:t.sharp})));
+  planG.legs.forEach(l=>planDrawn.push(marker(l.ll,'lbl',{text:T('legSteps',l.L)})));
   planG.arts.forEach(a=>planDrawn.push(marker(a.ll,'art',{k:a.k+1,plan:true})));
 }
 // while laying: pin a plan that waited for a direction, then follow progress along it
@@ -806,8 +845,8 @@ function planFix(p){
   if(loc.d<=20)planProg=Math.max(planProg||0,loc.cum);
   if(cfg.alert!=='none'&&loc.d<=OFF){
     lay.alerted=lay.alerted||{t:[],a:[]};const at=planProg||0;
-    planG.turns.forEach((t,i)=>{const ahead=t.cum-at;if(!lay.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){lay.alerted.t.push(i);alertNow(cfg.alert,T('planTurn',T(t.dir),t.sharp,steps(Math.max(0,ahead))),'turn')}});
-    planG.arts.forEach(a=>{const ahead=a.cum-at;if(!lay.alerted.a.includes(a.k)&&ahead<=cfg.alertDist&&ahead>-3){lay.alerted.a.push(a.k);alertNow(cfg.alert,T('planArt',a.k+1,steps(Math.max(0,ahead))),'art')}});
+    planG.turns.forEach((t,i)=>{const ahead=t.cum-at;if(cfg.alT&&!lay.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){lay.alerted.t.push(i);alertNow(cfg.alert,T('planTurn',T(t.dir),t.sharp,steps(Math.max(0,ahead))),'turn')}});
+    planG.arts.forEach(a=>{const ahead=a.cum-at;if(cfg.alA&&!lay.alerted.a.includes(a.k)&&ahead<=cfg.alertDist&&ahead>-3){lay.alerted.a.push(a.k);alertNow(cfg.alert,T('planArt',a.k+1,steps(Math.max(0,ahead))),'art')}});
   }
 }
 // the banner while laying a plan: off the plan first, then the next article, then the next turn
@@ -827,7 +866,7 @@ function renderLay(){
   if(mode!=='lay')return;
   drawPlan();
   const m=lay?pathLen(lay.pts):0,na=lay?lay.arts.length:0,leg=na?m-lay.arts[na-1].cum:m;
-  setStats([[T('sTime'),lay?fmtT(Date.now()-lay.start):'0:00'],[T('sTrack'),steps(m),'',T('m',Math.round(m))],
+  setStats([[T('sTime'),lay?fmtT(Date.now()-lay.start):'0:00'],[T('sTrack'),steps(m),'',plan?T('ofSteps',plan.total):T('m',Math.round(m))],
     [na?T('sSinceArt',na):T('sSinceFlag'),steps(leg),'',T('m',Math.round(leg))],
     [T('sGps'),lastAcc!=null?'±'+lastAcc:'–',lastAcc!=null&&lastAcc>GOOD_ACC?'bad':'']]);
   const mb=$('mainBtn'),sb=$('sideBtn');
@@ -835,6 +874,7 @@ function renderLay(){
   mb.querySelector('span').textContent=lay?T('stopLay'):T('startLay');
   mb.className=lay?'btn warn':'btn';mb.disabled=!lay&&!lastPos;
   sb.textContent=T('markArt');sb.disabled=!lay||!lastPos;
+  const fb=$('foodBtn');fb.hidden=false;fb.textContent=T('markFood');fb.disabled=!lay||!lastPos;$('screen').querySelector('.bottom').classList.add('three');
   $('hintLine').textContent=plan?(lay?T('planHint'):T('planReady',plan.name,plan.total)):lay?T('layHint'):T('layReady');
   if(!lastPos)banner(T('waitGps'));else if(lastAcc>GOOD_ACC)banner(T('gpsWeak',lastAcc),'bad');else if(plan)planBanner();else banner('');
 }
@@ -876,6 +916,15 @@ $('noteForm').onsubmit=e=>{
   const v=$('noteIn').value.trim().slice(0,140);if(v)lay.arts[noteK].note=v;else delete lay.arts[noteK].note;
   store('gps-lay',JSON.stringify(lay));drawLay();if(v)toast(T('noteSaved',noteK+1));
 };
+// a food station: a spot on the track, not an article
+function layFood(){
+  if(!lay||!lastPos)return;
+  const last=lay.pts[lay.pts.length-1];if(hav(last,lastPos)>=1)lay.pts.push([lastPos[0],lastPos[1],Date.now()]);
+  lay.food=lay.food||[];lay.food.push({ll:[lastPos[0],lastPos[1]],cum:pathLen(lay.pts),t:Date.now()});
+  store('gps-lay',JSON.stringify(lay));drawLay();buzz([40,40,40]);toast(T('foodMarked',lay.food.length));renderLay();
+}
+async function dropFood(i){if(!lay||!lay.food[i])return;if(await ask(T('foodDelAsk'),T('foodDelYes'))){lay.food.splice(i,1);store('gps-lay',JSON.stringify(lay));drawLay();renderLay()}}
+$('foodBtn').onclick=layFood;
 function layMark(){
   if(!lay||!lastPos)return;
   const last=lay.pts[lay.pts.length-1],prevCum=lay.arts.length?lay.arts[lay.arts.length-1].cum:0;
@@ -887,7 +936,7 @@ $('saveForm').onsubmit=e=>{
   e.preventDefault();
   const name=$('nameIn').value.trim()||$('nameIn').placeholder||T('defName','');
   // what is saved is the track actually walked; the plan is kept only as a note of where it came from
-  const tr={id:'t'+Date.now().toString(36),name,start:lay.start,end:lay.end,pts:lay.pts,arts:lay.arts.map(a=>Object.assign({ll:a.ll,cum:a.cum,t:a.t},a.note?{note:a.note}:{})),runs:[],plan:plan?{code:plan.code,name:plan.name}:undefined};
+  const tr={id:'t'+Date.now().toString(36),name,start:lay.start,end:lay.end,pts:lay.pts,arts:lay.arts.map(a=>Object.assign({ll:a.ll,cum:a.cum,t:a.t},a.note?{note:a.note}:{})),runs:[],food:(lay.food||[]).map(f=>({ll:f.ll,cum:f.cum,t:f.t})),plan:plan?{code:plan.code,name:plan.name}:undefined};
   const all=tracks();all.push(tr);saveTracks(all);drop('gps-lay');lay=null;plan=null;$('saveDlg').close();$('noteChip').hidden=true;
   stopGps();keepAwake(false);clearMap();toast(T('saved'));renderHome();
 };
@@ -905,6 +954,7 @@ function startFollow(id,resume,preview){
   casedLine(tr.pts,'#2F9E55');
   geo.turns.forEach(t=>marker(t.ll,'turn'));
   marker(tr.pts[0],'flag');
+  (tr.food||[]).forEach(f=>marker(f.ll,'food',{onClick:()=>toast(T('foodStation'))}));
   if(finished){
     const r=tr.runs[tr.runs.length-1];run=null;viewRun=r;
     artMk=tr.arts.map((a,k)=>marker(a.ll,'art',{k:k+1,found:r.found.includes(k),missed:(r.missed||[]).includes(k),note:a.note,onClick:()=>a.note&&toast(T('artN',k+1)+': '+a.note)}));
@@ -960,14 +1010,17 @@ function toggleFound(k){
   setArt(k,run.found.includes(k)?'missed':(run.missed||[]).includes(k)?'open':'found');
 }
 // standing still for 10 seconds near an open article (the dog is down on it) marks it found
-const STILL_MS=10000,STILL_M=5;
+const STILL_MS=10000,STILL_M=4,AUTO_M=4;
 let still=null;
 function checkStill(){
-  if(!run||!lastPos||lastAcc>GOOD_ACC){still=null;return}
+  if(!run||!cfg.auto||!lastPos||lastAcc>GOOD_ACC){still=null;return}
   if(!still||hav(still.at,lastPos)>STILL_M){still={at:lastPos.slice(),t:Date.now()};return}
   if(Date.now()-still.t<STILL_MS)return;
-  const reach=Math.max(8,cfg.lead+6),noAuto=run.noAuto||[],missed=run.missed||[];
-  const near=tr.arts.map((a,k)=>({k,d:hav(a.ll,lastPos)})).filter(x=>x.d<=reach&&!run.found.includes(x.k)&&!missed.includes(x.k)&&!noAuto.includes(x.k)).sort((a,b)=>a.d-b.d)[0];
+  // only when you are on the track and the dog's point (you + the lead) is on the article itself,
+  // so a dog that stops elsewhere to search for the track does not mark anything
+  if(!curLoc||curLoc.d>6)return;
+  const dogAt=(lastProg||0)+cfg.lead,noAuto=run.noAuto||[],missed=run.missed||[];
+  const near=tr.arts.map((a,k)=>({k,d:Math.abs(a.cum-dogAt),r:hav(a.ll,lastPos)})).filter(x=>x.d<=AUTO_M&&x.r<=cfg.lead+AUTO_M&&!run.found.includes(x.k)&&!missed.includes(x.k)&&!noAuto.includes(x.k)).sort((a,b)=>a.d-b.d)[0];
   if(near){setArt(near.k,'found','auto');still.t=Date.now()}
 }
 function renderFollow(){
@@ -990,6 +1043,8 @@ function renderFollow(){
   const prog=(lastProg||0)+cfg.lead; // where the dog is, about this far ahead of the handler
   const near=tr.arts.map((a,k)=>({k,ahead:a.cum-prog})).filter(x=>!run.found.includes(x.k)&&!(run.missed||[]).includes(x.k)&&x.ahead>-8&&x.ahead<15).sort((a,b)=>a.ahead-b.ahead)[0];
   if(near){banner(T('nearArt',near.k+1).replace('{m}',Math.max(0,Math.round(near.ahead))),'ok',tr.arts[near.k].note);return}
+  const nf=(tr.food||[]).map(f=>f.cum-prog).filter(a=>a>-5&&a<15).sort((a,b)=>a-b)[0];
+  if(nf!=null){banner(T('nearFood',Math.max(0,Math.round(nf))),'ok');return}
   const nt=geo.turns.find(t=>t.cum>prog+3);
   banner(nt?T('nextTurn',T(nt.dir),Math.round(nt.cum-prog)):T('endIn',Math.max(0,Math.round(geo.len-prog))),'ok');
 }
@@ -1052,19 +1107,19 @@ $('mainBtn').onclick=()=>{if(mode==='lay')layMain();else if(mode==='view')showSu
 $('sideBtn').onclick=()=>{if(mode==='lay')layMark();else if(mode==='view'||mode==='preview')shareTrack(tr);else followSide()};
 
 /* ---------- settings ---------- */
-const DEF={alert:'vibrate',alertDist:10,lead:0,rotate:true,line:'thick'};
+const DEF={alert:'vibrate',alertDist:10,lead:0,rotate:true,line:'thick',alT:true,alA:true,alF:true,auto:true};
 let cfg=(()=>{try{return Object.assign({},DEF,JSON.parse(load('gps-settings')||'{}'))}catch(e){return Object.assign({},DEF)}})();
 function fillSettings(){
   const dist=$('sAlertDist'),lead=$('sLead');
   dist.innerHTML=[5,10,15,20,30].map(v=>`<option value="${v}">${T('m',v)}</option>`).join('');
   lead.innerHTML=[0,5,10].map(v=>`<option value="${v}">${v?T('m',v):T('lead0')}</option>`).join('');
-  $('sAlert').value=cfg.alert;dist.value=cfg.alertDist;lead.value=cfg.lead;$('sRotate').checked=cfg.rotate;$('sLine').value=cfg.line;
+  $('sAlert').value=cfg.alert;dist.value=cfg.alertDist;lead.value=cfg.lead;$('sRotate').checked=cfg.rotate;$('sLine').value=cfg.line;$('sAlT').checked=cfg.alT;$('sAlA').checked=cfg.alA;$('sAlF').checked=cfg.alF;$('sAuto').checked=cfg.auto;
 }
 function openSettings(){fillSettings();$('setDlg').showModal()}
 $('setBtnHome').onclick=openSettings;$('setBtn').onclick=openSettings;
 $('setForm').onsubmit=e=>{
   e.preventDefault();
-  cfg={alert:$('sAlert').value,alertDist:+$('sAlertDist').value,lead:+$('sLead').value,rotate:$('sRotate').checked,line:$('sLine').value};restyleLines();
+  cfg={alert:$('sAlert').value,alertDist:+$('sAlertDist').value,lead:+$('sLead').value,rotate:$('sRotate').checked,line:$('sLine').value,alT:$('sAlT').checked,alA:$('sAlA').checked,alF:$('sAlF').checked,auto:$('sAuto').checked};restyleLines();
   store('gps-settings',JSON.stringify(cfg));$('setDlg').close();
   if(cfg.alert==='voice')primeVoice();if(cfg.rotate)startCompass();
   if(mode)refreshScreen();applyBearing(true);
@@ -1080,16 +1135,19 @@ function say(text){
 // iPhones only speak after a tap; a silent line spoken from a tap unlocks speech for the run
 function primeVoice(){try{const s=window.speechSynthesis;if(s){const u=new SpeechSynthesisUtterance(' ');u.volume=0;s.speak(u)}}catch(e){}}
 function speechStop(){try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}}
-function alertNow(how,text,kind){if(how==='vibrate')buzz(kind==='turn'?[450]:[120,80,120,80,120]);else if(how==='voice')say(text)}
+function alertNow(how,text,kind){if(how==='vibrate')buzz(kind==='turn'?[450]:kind==='food'?[250,120,250]:[120,80,120,80,120]);else if(how==='voice')say(text)}
 // each turn and each article is announced once, when the dog's point gets within the chosen distance
 function checkAlerts(){
   if(!run||cfg.alert==='none'||!curLoc||curLoc.d>OFF)return;
   run.alerted=run.alerted||{t:[],a:[]};
   const eff=(lastProg||0)+cfg.lead;
   geo.turns.forEach((t,i)=>{const ahead=t.cum-eff;
-    if(!run.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.t.push(i);alertNow(cfg.alert,T('sayTurn',T(t.dir),Math.max(0,Math.round(ahead))),'turn')}});
+    if(cfg.alT&&!run.alerted.t.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.t.push(i);alertNow(cfg.alert,T('sayTurn',T(t.dir),Math.max(0,Math.round(ahead))),'turn')}});
   tr.arts.forEach((a,k)=>{const ahead=a.cum-eff;
-    if(!run.found.includes(k)&&!(run.missed||[]).includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead)))+(a.note?'. '+a.note:''),'art')}});
+    if(cfg.alA&&!run.found.includes(k)&&!(run.missed||[]).includes(k)&&!run.alerted.a.includes(k)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.a.push(k);alertNow(cfg.alert,T('sayArt',k+1,Math.max(0,Math.round(ahead)))+(a.note?'. '+a.note:''),'art')}});
+  run.alerted.f=run.alerted.f||[];
+  (tr.food||[]).forEach((f,i)=>{const ahead=f.cum-eff;
+    if(cfg.alF&&!run.alerted.f.includes(i)&&ahead<=cfg.alertDist&&ahead>-3){run.alerted.f.push(i);alertNow(cfg.alert,T('sayFood',Math.max(0,Math.round(ahead))),'food')}});
 }
 
 /* ---------- map follows the phone's heading ---------- */
@@ -1127,7 +1185,7 @@ const unb64u=str=>{const s=atob(str.replace(/-/g,'+').replace(/_/g,'/'));const b
 async function packTrack(t){
   const P=projector(t.pts[0]),keep=rdp(t.pts.map(P),1),q=v=>Math.round(v*1e5),pts=[];let a0=0,b0=0;
   keep.forEach(i=>{const a=q(t.pts[i][0]),b=q(t.pts[i][1]);pts.push(a-a0,b-b0);a0=a;b0=b});
-  const json=JSON.stringify({v:1,n:t.name,s:t.start,e:t.end,p:pts,a:t.arts.map(x=>x.note?[q(x.ll[0]),q(x.ll[1]),x.note]:[q(x.ll[0]),q(x.ll[1])])});
+  const json=JSON.stringify({v:1,n:t.name,s:t.start,e:t.end,p:pts,a:t.arts.map(x=>x.note?[q(x.ll[0]),q(x.ll[1]),x.note]:[q(x.ll[0]),q(x.ll[1])]),f:(t.food||[]).map(x=>[q(x.ll[0]),q(x.ll[1])])});
   if(window.CompressionStream){
     const st=new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'));
     return 'z'+b64u(new Uint8Array(await new Response(st).arrayBuffer()));
@@ -1143,6 +1201,7 @@ async function unpackTrack(code){
   const t={id:'t'+Date.now().toString(36),name:String(o.n||'').slice(0,60),start:+o.s||Date.now(),end:+o.e||Date.now(),pts,arts:[],runs:[]};
   const g=prepare(t);
   t.arts=(o.a||[]).map(x=>{const ll=[x[0]/1e5,x[1]/1e5],a={ll,cum:locate(g,ll,null).cum,t:0};if(typeof x[2]==='string'&&x[2])a.note=x[2].slice(0,140);return a});
+  t.food=(o.f||[]).map(x=>{const ll=[x[0]/1e5,x[1]/1e5];return{ll,cum:locate(g,ll,null).cum,t:0}});
   return t;
 }
 async function shareTrack(t){
